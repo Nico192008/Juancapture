@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Mail } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase'; // ✅ ADD
 
 export const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
   const { signIn } = useAuthContext();
   const navigate = useNavigate();
 
@@ -18,8 +20,28 @@ export const AdminLogin = () => {
     setIsLoading(true);
 
     try {
-      await signIn(email, password);
+      // ✅ LOGIN
+      const { user } = await signIn(email, password);
+
+      if (!user) {
+        throw new Error('Login failed');
+      }
+
+      // ✅ CHECK ADMIN BEFORE REDIRECT
+      const { data: admin, error: adminError } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (adminError || !admin) {
+        setError('Access denied. Not an admin.');
+        return;
+      }
+
+      // ✅ SAFE REDIRECT
       navigate('/admin/dashboard');
+
     } catch (err) {
       setError('Invalid email or password');
       console.error('Login error:', err);
@@ -50,6 +72,7 @@ export const AdminLogin = () => {
 
         <div className="glass-strong p-8 rounded-lg">
           <form onSubmit={handleSubmit} className="space-y-6">
+
             <div>
               <label htmlFor="email" className="block text-white mb-2">
                 <Mail className="inline mr-2" size={18} />
@@ -102,6 +125,7 @@ export const AdminLogin = () => {
                 'Sign In'
               )}
             </button>
+
           </form>
         </div>
 
