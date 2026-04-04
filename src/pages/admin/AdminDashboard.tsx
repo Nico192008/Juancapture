@@ -13,24 +13,52 @@ import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 
 export const AdminDashboard = () => {
-  const { user, isAdmin, signOut } = useAuthContext();
+  const { user, signOut } = useAuthContext(); // ❌ removed isAdmin (we will verify manually)
   const navigate = useNavigate();
+
   const [stats, setStats] = useState({
     albums: 0,
     videos: 0,
     bookings: 0,
     testimonials: 0,
   });
+
   const [loading, setLoading] = useState(true);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
 
   useEffect(() => {
-    if (!user || !isAdmin) {
-      navigate('/admin/login');
-      return;
-    }
+    checkAdminAccess();
+  }, [user]);
 
-    fetchStats();
-  }, [user, isAdmin, navigate]);
+  const checkAdminAccess = async () => {
+    try {
+      if (!user) {
+        navigate('/admin/login');
+        return;
+      }
+
+      // ✅ VERIFY ADMIN FROM DATABASE
+      const { data: admin, error } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !admin) {
+        console.error('Not an admin:', error);
+        navigate('/admin/login');
+        return;
+      }
+
+      // ✅ IF ADMIN → LOAD DATA
+      await fetchStats();
+    } catch (err) {
+      console.error('Auth error:', err);
+      navigate('/admin/login');
+    } finally {
+      setCheckingAdmin(false);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -65,7 +93,8 @@ export const AdminDashboard = () => {
     }
   };
 
-  if (loading) {
+  // ✅ LOADING WHILE CHECKING ADMIN
+  if (checkingAdmin || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-gold" />
@@ -192,28 +221,16 @@ export const AdminDashboard = () => {
               Navigation
             </h2>
             <div className="space-y-4">
-              <Link
-                to="/admin/albums"
-                className="block glass p-4 rounded-lg hover:bg-white/10 transition-colors text-white"
-              >
+              <Link to="/admin/albums" className="block glass p-4 rounded-lg hover:bg-white/10 text-white">
                 Manage Albums & Images
               </Link>
-              <Link
-                to="/admin/videos"
-                className="block glass p-4 rounded-lg hover:bg-white/10 transition-colors text-white"
-              >
+              <Link to="/admin/videos" className="block glass p-4 rounded-lg hover:bg-white/10 text-white">
                 Manage Videos
               </Link>
-              <Link
-                to="/admin/bookings"
-                className="block glass p-4 rounded-lg hover:bg-white/10 transition-colors text-white"
-              >
+              <Link to="/admin/bookings" className="block glass p-4 rounded-lg hover:bg-white/10 text-white">
                 View Bookings
               </Link>
-              <Link
-                to="/admin/testimonials"
-                className="block glass p-4 rounded-lg hover:bg-white/10 transition-colors text-white"
-              >
+              <Link to="/admin/testimonials" className="block glass p-4 rounded-lg hover:bg-white/10 text-white">
                 Manage Testimonials
               </Link>
             </div>
