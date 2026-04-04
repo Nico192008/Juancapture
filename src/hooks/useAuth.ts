@@ -10,103 +10,56 @@ export const useAuth = () => {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        setLoading(true); // ✅ ensure loading starts
-
-        const { data: { user }, error } = await supabase.auth.getUser();
-
-        if (error) {
-          console.error('Auth error:', error);
-          setUser(null);
-          setIsAdmin(false);
-          return;
-        }
-
+        const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
 
         if (user) {
-          const { data: adminData, error: adminError } = await supabase
+          const { data: adminData } = await supabase
             .from('admin_users')
             .select('id')
             .eq('id', user.id)
             .maybeSingle();
 
-          if (adminError) {
-            console.error('Admin check error:', adminError);
-            setIsAdmin(false);
-          } else {
-            setIsAdmin(!!adminData);
-          }
-        } else {
-          setIsAdmin(false);
+          setIsAdmin(!!adminData);
         }
-
       } catch (error) {
         console.error('Error checking user:', error);
-        setUser(null);
-        setIsAdmin(false);
       } finally {
-        setLoading(false); // ✅ ALWAYS STOP LOADING
+        setLoading(false);
       }
     };
 
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        try {
-          setLoading(true); // ✅ FIX loading flicker
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      (async () => {
+        setUser(session?.user ?? null);
 
-          const currentUser = session?.user ?? null;
-          setUser(currentUser);
+        if (session?.user) {
+          const { data: adminData } = await supabase
+            .from('admin_users')
+            .select('id')
+            .eq('id', session.user.id)
+            .maybeSingle();
 
-          if (currentUser) {
-            const { data: adminData, error: adminError } = await supabase
-              .from('admin_users')
-              .select('id')
-              .eq('id', currentUser.id)
-              .maybeSingle();
-
-            if (adminError) {
-              console.error('Admin check error:', adminError);
-              setIsAdmin(false);
-            } else {
-              setIsAdmin(!!adminData);
-            }
-          } else {
-            setIsAdmin(false);
-          }
-
-        } catch (err) {
-          console.error('Auth state error:', err);
-          setUser(null);
+          setIsAdmin(!!adminData);
+        } else {
           setIsAdmin(false);
-        } finally {
-          setLoading(false); // ✅ FIX infinite loading
         }
-      }
-    );
+      })();
+    });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // ✅ FIX: RETURN USER
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-
-    return { user: data.user }; // ✅ IMPORTANT
   };
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
-
-    setUser(null);       // ✅ cleanup
-    setIsAdmin(false);   // ✅ cleanup
   };
 
   return { user, loading, isAdmin, signIn, signOut };
