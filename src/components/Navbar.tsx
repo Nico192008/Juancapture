@@ -20,7 +20,7 @@ export const Navbar = () => {
 
   // 2. FIXED: Auto-scroll logic kapag nag-load ang page na may hash
   useEffect(() => {
-    if (location.hash === '#booking-section') {
+    if (location.hash === '/booking') {
       // Nagbibigay tayo ng kaunting delay (100ms) para siguradong render na ang DOM
       const timer = setTimeout(() => {
         const element = document.getElementById('booking-section');
