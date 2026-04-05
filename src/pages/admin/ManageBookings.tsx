@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Mail, CheckCircle, Clock, Trash2, Send, AlertCircle } from 'lucide-react';
 import { Booking } from '../../types';
 import { supabase } from '../../lib/supabase';
+import emailjs from '@emailjs/browser'; // Inimport natin ang EmailJS
 
 export const ManageBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -38,7 +39,6 @@ export const ManageBookings = () => {
 
       if (error) throw error;
 
-      // Automatic email trigger once status is changed to 'confirmed'
       if (status === 'confirmed') {
         const booking = bookings.find(b => b.id === id);
         if (booking) {
@@ -53,40 +53,36 @@ export const ManageBookings = () => {
     }
   };
 
-  // MODIFIED: Now uses Resend API directly
+  // MODIFIED: Ngayon ay gamit na ang EmailJS
   const sendConfirmationEmail = async (booking: Booking) => {
     try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          // Make sure to replace this with your verified domain in Resend
-          // e.g., 'Your Business Name <info@yourdomain.com>'
-          from: 'Juan Capture <booking@juancapture.vercel.com>', 
-          to: [booking.email],
-          subject: 'Your Booking is Confirmed!',
-          html: `
-            <h2>Booking Confirmation</h2>
-            <p>Hi ${booking.name},</p>
-            <p>Great news! Your booking for <strong>${booking.event_type}</strong> on <strong>${new Date(booking.event_date).toLocaleDateString()}</strong> has been officially confirmed.</p>
-            <p>If you have any questions, feel free to reply to this email.</p>
-            <p>Thank you!</p>
-          `,
-        }),
-      });
+      // Ang mga ID na ito ay makukuha mo sa EmailJS Dashboard
+      const serviceId = "";
+      const templateId = "";
+      const publicKey = "";
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Resend API Error');
+      const templateParams = {
+        to_name: booking.name,
+        to_email: booking.email,
+        event_type: booking.event_type,
+        event_date: new Date(booking.event_date).toLocaleDateString(),
+        message: "Your booking has been officially confirmed. We look forward to seeing you!",
+      };
+
+      const result = await emailjs.send(
+        serviceId,
+        templateId,
+        templateParams,
+        publicKey
+      );
+
+      if (result.status === 200) {
+        console.log('Email successfully sent via EmailJS!');
+        alert('Confirmation email sent to client!');
       }
-
-      console.log('Confirmation email sent successfully via Resend!');
     } catch (error) {
-      console.error('Error sending confirmation email:', error);
-      alert('Booking was confirmed, but failed to send the email notification.');
+      console.error('EmailJS Error:', error);
+      alert('Confirmed in system, but failed to send email notification.');
     }
   };
 
