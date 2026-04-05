@@ -47,7 +47,7 @@ export const Navbar = () => {
         }
       } else {
         // Kung nasa ibang page, lipat muna sa Home na may hash
-        navigate('/#booking-section');
+        navigate('/booking');
       }
     }
   };
@@ -58,7 +58,7 @@ export const Navbar = () => {
     { name: 'Videos', path: '/videos' },
     { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
-    { name: 'Book Now', path: '/book' },
+    { name: 'Book Now', path: '/booking' },
   ];
 
   return (
