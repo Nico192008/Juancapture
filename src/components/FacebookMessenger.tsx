@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 export const FacebookMessenger = () => {
   const handleClick = () => {
-    window.open('https://m.me/your-facebook-page', '_blank');
+    window.open('https://www.facebook.com/share/18iZ3mAZ2Q/', '_blank');
   };
 
   return (
