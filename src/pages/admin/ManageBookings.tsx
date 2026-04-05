@@ -57,8 +57,8 @@ export const ManageBookings = () => {
   const sendConfirmationEmail = async (booking: Booking) => {
     try {
       // Ang mga ID na ito ay makukuha mo sa EmailJS Dashboard
-      const serviceId = "";
-      const templateId = "";
+      const serviceId = "service_4n5zlku";
+      const templateId = "template_z8t052n";
       const publicKey = "";
 
       const templateParams = {
