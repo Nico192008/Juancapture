@@ -52,27 +52,28 @@ export const ManageBookings = () => {
     }
   };
 
+  
   const sendConfirmationEmail = async (booking: Booking) => {
-    try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-booking-confirmation`;
-      await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          name: booking.name,
-          email: booking.email,
-          eventType: booking.event_type,
-          eventDate: booking.event_date,
-          message: `Your booking has been confirmed!`,
-        }),
-      });
-    } catch (error) {
-      console.error('Error sending confirmation email:', error);
-    }
-  };
+  try {
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-booking-confirmation`;
+    await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        name: booking.name,
+        email: booking.email,
+        eventType: booking.event_type,
+        eventDate: booking.event_date,
+        message: `Your booking has been confirmed!`,
+      }),
+    });
+  } catch (error) {
+    console.error('Error sending confirmation email:', error);
+  }
+};
 
   const deleteBooking = async (id: string) => {
     if (!confirm('Are you sure you want to delete this booking?')) return;
