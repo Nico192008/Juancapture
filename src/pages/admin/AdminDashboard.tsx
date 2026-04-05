@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Image as ImageIcon,
@@ -10,293 +10,267 @@ import {
   X,
   Upload,
   Loader2,
-  FileVideo,
-  Trash2,
   LayoutGrid,
-  FolderPlus,
-  Settings,
-  Edit2
+  Clock,
+  ChevronRight,
+  Trash2,
+  FileText
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
-
-interface Album {
-  id: string;
-  name: string;
-}
-
-interface Photo {
-  id: string;
-  url: string;
-  album_id: string;
-}
 
 export const AdminDashboard = () => {
   const { user, isAdmin, signOut, loading: authLoading } = useAuthContext();
   const navigate = useNavigate();
   
-  const [stats, setStats] = useState({ albums: 0, videos: 0, bookings: 0 });
-  const [loading, setLoading] = useState(true);
-  
-  // Modals & Selection States
-  const [activeModal, setActiveModal] = useState<'image' | 'video' | 'createAlbum' | 'editPhoto' | null>(null);
-  const [selectedAlbumView, setSelectedAlbumView] = useState<Album | null>(null);
-  const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
+  // Real-time Clock State
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   // Data States
-  const [albumsList, setAlbumsList] = useState<Album[]>([]);
-  const [photosInAlbum, setPhotosInAlbum] = useState<Photo[]>([]);
+  const [stats, setStats] = useState({ albums: 0, videos: 0, bookings: 0 });
+  const [albumsList, setAlbumsList] = useState<{id: string, name: string}[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // Form States
+  // Modal & Form States
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [postType, setPostType] = useState<'image' | 'video'>('image');
   const [submitting, setSubmitting] = useState(false);
+  
+  // Upload Fields
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState('');
-  const [videoTitle, setVideoTitle] = useState('');
-  const [newAlbumName, setNewAlbumName] = useState('');
+  const [caption, setCaption] = useState('');
+  const [title, setTitle] = useState('');
 
   useEffect(() => {
+    // Clock Timer
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    
     if (authLoading) return;
     if (!user || !isAdmin) {
       navigate('/admin/login');
       return;
     }
-    fetchInitialData();
+    
+    fetchDashboardData();
+    return () => clearInterval(timer);
   }, [user, isAdmin, navigate, authLoading]);
 
-  const fetchInitialData = async () => {
-    setLoading(true);
-    await Promise.all([fetchStats(), fetchAlbums()]);
-    setLoading(false);
+  const fetchDashboardData = async () => {
+    try {
+      const [albums, vids, bookings] = await Promise.all([
+        supabase.from('albums').select('id, name'),
+        supabase.from('videos').select('id', { count: 'exact', head: true }),
+        supabase.from('bookings').select('id', { count: 'exact', head: true }),
+      ]);
+      
+      setAlbumsList(albums.data || []);
+      setStats({
+        albums: albums.data?.length || 0,
+        videos: vids.count || 0,
+        bookings: bookings.count || 0,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const fetchStats = async () => {
-    const [albums, videos, bookings] = await Promise.all([
-      supabase.from('albums').select('id', { count: 'exact', head: true }),
-      supabase.from('videos').select('id', { count: 'exact', head: true }),
-      supabase.from('bookings').select('id', { count: 'exact', head: true }),
-    ]);
-    setStats({ albums: albums.count || 0, videos: videos.count || 0, bookings: bookings.count || 0 });
-  };
-
-  const fetchAlbums = async () => {
-    const { data } = await supabase.from('albums').select('*').order('created_at', { ascending: false });
-    if (data) setAlbumsList(data);
-  };
-
-  const fetchPhotos = async (albumId: string) => {
-    const { data } = await supabase.from('images').select('*').eq('album_id', albumId);
-    if (data) setPhotosInAlbum(data);
-  };
-
-  // --- HANDLERS ---
-
-  const handleCreateAlbum = async (e: React.FormEvent) => {
+  const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedFile) return alert("Paki-pili ng file.");
+    
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('albums').insert([{ name: newAlbumName }]);
-      if (error) throw error;
-      alert("Album created!");
-      closeModal();
-      fetchInitialData();
-    } catch (err: any) { alert(err.message); } finally { setSubmitting(false); }
-  };
-
-  const handleFileUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFile) return alert("Pumili ng file.");
-    setSubmitting(true);
-    try {
+      // 1. Upload sa Storage Bucket ('portfolio')
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
-      const bucketPath = activeModal === 'image' ? `images/${fileName}` : `videos/${fileName}`;
+      const filePath = `${postType === 'image' ? 'images' : 'videos'}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage.from('portfolio').upload(bucketPath, selectedFile);
+      const { error: uploadError } = await supabase.storage
+        .from('portfolio')
+        .upload(filePath, selectedFile);
+
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage.from('portfolio').getPublicUrl(bucketPath);
+      // 2. Kunin ang Public URL
+      const { data: { publicUrl } } = supabase.storage.from('portfolio').getPublicUrl(filePath);
 
-      if (activeModal === 'image') {
-        const { error } = await supabase.from('images').insert([{ album_id: selectedAlbumId, url: publicUrl }]);
+      // 3. Insert sa Database depende sa type
+      if (postType === 'image') {
+        const { error } = await supabase.from('images').insert([{
+          album_id: selectedAlbumId,
+          url: publicUrl,
+          caption: caption // Image caption
+        }]);
         if (error) throw error;
-        if (selectedAlbumView?.id === selectedAlbumId) fetchPhotos(selectedAlbumId);
       } else {
-        const { error } = await supabase.from('videos').insert([{ title: videoTitle, url: publicUrl }]);
+        const { error } = await supabase.from('videos').insert([{
+          title: title,
+          url: publicUrl
+        }]);
         if (error) throw error;
       }
 
-      alert("Upload successful!");
-      closeModal();
-      fetchStats();
-    } catch (err: any) { alert(err.message); } finally { setSubmitting(false); }
+      alert("Post created successfully!");
+      resetForm();
+      fetchDashboardData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleDeletePhoto = async (photoId: string, url: string) => {
-    if (!confirm("Sigurado ka bang buburahin ang litratong ito?")) return;
-    try {
-      const path = url.split('portfolio/')[1];
-      await supabase.storage.from('portfolio').remove([path]);
-      await supabase.from('images').delete().eq('id', photoId);
-      if (selectedAlbumView) fetchPhotos(selectedAlbumView.id);
-    } catch (err) { alert("Error deleting photo"); }
-  };
-
-  const handleUpdatePhotoAlbum = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingPhoto || !selectedAlbumId) return;
-    setSubmitting(true);
-    try {
-      const { error } = await supabase.from('images').update({ album_id: selectedAlbumId }).eq('id', editingPhoto.id);
-      if (error) throw error;
-      alert("Photo updated!");
-      closeModal();
-      if (selectedAlbumView) fetchPhotos(selectedAlbumView.id);
-    } catch (err: any) { alert(err.message); } finally { setSubmitting(false); }
-  };
-
-  const closeModal = () => {
-    setActiveModal(null);
+  const resetForm = () => {
+    setShowCreateModal(false);
     setSelectedFile(null);
     setSelectedAlbumId('');
-    setVideoTitle('');
-    setNewAlbumName('');
-    setEditingPhoto(null);
+    setCaption('');
+    setTitle('');
   };
 
-  if (loading || authLoading) return <div className="min-h-screen flex items-center justify-center bg-black"><Loader2 className="animate-spin text-gold w-10 h-10" /></div>;
+  if (loading || authLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-gold w-10 h-10" /></div>;
 
   return (
-    <div className="min-h-screen pt-24 pb-20 bg-black text-white">
+    <div className="min-h-screen pt-24 pb-20 bg-[#050505] text-white font-sans">
       <div className="container-custom px-6">
         
-        {/* Header */}
-        <div className="flex justify-between items-center mb-10">
-          <div>
-            <h1 className="text-4xl font-playfair font-bold">Admin Dashboard</h1>
-            <p className="text-gray-500 text-xs">Logged in as {user?.email}</p>
-          </div>
-          <button onClick={() => signOut()} className="btn-gold-outline flex items-center gap-2 py-2 px-4 text-sm"><LogOut size={16}/> Sign Out</button>
-        </div>
+        {/* --- AESTHETIC HEADER & CLOCK --- */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+            <h1 className="text-5xl font-playfair font-bold bg-gradient-to-r from-white to-gray-500 bg-clip-text text-transparent">
+              Management
+            </h1>
+            <div className="flex items-center gap-2 text-gold mt-2 font-mono text-sm tracking-widest">
+              <Clock size={14} />
+              <span>{currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+              <span className="opacity-40">|</span>
+              <span>{currentTime.toLocaleTimeString()}</span>
+            </div>
+          </motion.div>
 
-        {/* Quick Actions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-          <button onClick={() => setActiveModal('createAlbum')} className="flex items-center gap-3 p-5 bg-white/5 border border-white/10 rounded-2xl hover:bg-gold hover:text-black transition-all group">
-            <FolderPlus className="text-gold group-hover:text-black" />
-            <div className="text-left font-bold"><p className="text-[10px] opacity-60">NEW</p> ALBUM</div>
-          </button>
-          
-          <button onClick={() => setActiveModal('image')} className="flex items-center gap-3 p-5 bg-white/5 border border-white/10 rounded-2xl hover:bg-gold hover:text-black transition-all group">
-            <Upload className="text-gold group-hover:text-black" />
-            <div className="text-left font-bold"><p className="text-[10px] opacity-60">UPLOAD</p> IMAGE</div>
-          </button>
-
-          <Link to="/admin/bookings" className="flex items-center gap-3 p-5 bg-gold text-black rounded-2xl hover:bg-white transition-all">
-            <Calendar />
-            <div className="text-left font-bold"><p className="text-[10px] opacity-60">CLIENT</p> BOOKINGS</div>
-          </Link>
-
-          <Link to="/admin/albums" className="flex items-center gap-3 p-5 bg-white/5 border border-white/10 rounded-2xl hover:border-gold transition-all group">
-            <Settings className="text-gold group-hover:rotate-90 transition-transform" />
-            <div className="text-left font-bold"><p className="text-[10px] opacity-60">MANAGE</p> ALBUMS</div>
-          </Link>
-        </div>
-
-        {/* Album Explorer */}
-        <div className="mb-10">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gold"><LayoutGrid size={20}/> Manage Photos in Albums</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {albumsList.map(album => (
-              <button 
-                key={album.id}
-                onClick={() => { setSelectedAlbumView(album); fetchPhotos(album.id); }}
-                className={`p-5 rounded-2xl border transition-all text-left ${selectedAlbumView?.id === album.id ? 'bg-gold text-black border-gold shadow-lg shadow-gold/20' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-              >
-                <ImageIcon size={18} className="mb-2 opacity-50"/>
-                <div className="font-bold text-sm truncate">{album.name}</div>
-              </button>
-            ))}
+          <div className="flex gap-4">
+            <button onClick={() => setShowCreateModal(true)} className="bg-gold text-black px-6 py-3 rounded-full font-bold flex items-center gap-2 hover:bg-white transition-all shadow-lg shadow-gold/20">
+              <Plus size={20} /> Create Post
+            </button>
+            <button onClick={() => signOut()} className="glass-strong p-3 rounded-full text-gray-400 hover:text-white hover:bg-red-500/20 transition-all border border-white/5">
+              <LogOut size={20} />
+            </button>
           </div>
         </div>
 
-        {/* Photo Management Gallery */}
-        <AnimatePresence>
-          {selectedAlbumView && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-strong p-8 rounded-3xl border border-white/10 mb-20 shadow-2xl">
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-bold">Album: <span className="text-gold">{selectedAlbumView.name}</span></h3>
-                <button onClick={() => setSelectedAlbumView(null)} className="text-gray-500 hover:text-white flex items-center gap-2"><X size={20}/> Close Gallery</button>
-              </div>
-
-              {photosInAlbum.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {photosInAlbum.map(photo => (
-                    <div key={photo.id} className="relative group aspect-square rounded-xl overflow-hidden border border-white/10 bg-black shadow-lg">
-                      <img src={photo.url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                        <button onClick={() => { setEditingPhoto(photo); setSelectedAlbumId(photo.album_id); setActiveModal('editPhoto'); }} className="p-3 bg-white text-black rounded-full hover:bg-gold transition-colors"><Edit2 size={18}/></button>
-                        <button onClick={() => handleDeletePhoto(photo.id, photo.url)} className="p-3 bg-red-600 rounded-full text-white hover:bg-red-500"><Trash2 size={18}/></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-20 border border-dashed border-white/10 rounded-2xl text-gray-500">Walang litrato sa album na ito.</div>
-              )}
+        {/* --- ANALYTICS CARDS --- */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          {[
+            { label: 'Event Bookings', count: stats.bookings, icon: Calendar, color: 'text-blue-400', link: '/admin/bookings' },
+            { label: 'Photo Albums', count: stats.albums, icon: ImageIcon, color: 'text-gold', link: '/admin/albums' },
+            { label: 'Video Reels', count: stats.videos, icon: Video, color: 'text-purple-400', link: '/admin/videos' },
+          ].map((stat, i) => (
+            <motion.div 
+              key={stat.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.1 }}
+            >
+              <Link to={stat.link} className="glass-strong block p-8 rounded-[2rem] border border-white/5 hover:border-gold/30 transition-all group relative overflow-hidden">
+                <stat.icon className={`absolute -right-4 -bottom-4 w-32 h-32 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity`} />
+                <div className={`${stat.color} mb-4`}><stat.icon size={28}/></div>
+                <div className="text-4xl font-bold mb-1 tracking-tighter">{stat.count}</div>
+                <div className="text-gray-500 text-xs uppercase tracking-widest font-bold">{stat.label}</div>
+              </Link>
             </motion.div>
-          )}
-        </AnimatePresence>
+          ))}
+        </div>
 
-        {/* MODAL SYSTEM */}
+        {/* --- QUICK NAVIGATION SECTION --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="glass-strong p-8 rounded-[2rem] border border-white/5">
+             <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><LayoutGrid size={20} className="text-gold"/> Recent Collections</h3>
+             <div className="space-y-3">
+                {albumsList.slice(0, 4).map(album => (
+                  <div key={album.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors border border-white/5 cursor-default">
+                    <span className="font-medium">{album.name}</span>
+                    <ChevronRight size={16} className="text-gray-600" />
+                  </div>
+                ))}
+                <Link to="/admin/albums" className="block text-center text-xs text-gold mt-4 hover:underline">Manage All Albums</Link>
+             </div>
+          </div>
+
+          <div className="glass-strong p-8 rounded-[2rem] border border-white/5 flex flex-col justify-center items-center text-center">
+             <div className="w-16 h-16 bg-gold/10 rounded-full flex items-center justify-center text-gold mb-4">
+                <FileText size={32} />
+             </div>
+             <h3 className="text-xl font-bold mb-2">Need to check Bookings?</h3>
+             <p className="text-gray-500 text-sm mb-6 max-w-[250px]">Check the latest photography and video requests from your clients.</p>
+             <Link to="/admin/bookings" className="btn-gold-outline w-full py-4 rounded-2xl">View Client List</Link>
+          </div>
+        </div>
+
+        {/* --- DYNAMIC CREATE POST MODAL --- */}
         <AnimatePresence>
-          {activeModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-xl bg-black/80">
-              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-strong w-full max-w-md p-8 rounded-3xl border border-white/10">
+          {showCreateModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={resetForm} className="absolute inset-0 bg-black/95 backdrop-blur-xl" />
+              <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="relative glass-strong w-full max-w-xl p-10 rounded-[3rem] border border-white/10 shadow-2xl">
+                
                 <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-bold text-gold uppercase tracking-tighter">
-                    {activeModal === 'createAlbum' && 'New Album'}
-                    {activeModal === 'image' && 'Add Image'}
-                    {activeModal === 'editPhoto' && 'Move Photo'}
-                  </h2>
-                  <button onClick={closeModal}><X/></button>
+                  <h2 className="text-3xl font-playfair font-bold">New Post</h2>
+                  <button onClick={resetForm} className="text-gray-500 hover:text-white transition-colors"><X size={28}/></button>
                 </div>
 
-                <form onSubmit={activeModal === 'editPhoto' ? handleUpdatePhotoAlbum : activeModal === 'createAlbum' ? handleCreateAlbum : handleFileUpload} className="space-y-6">
-                  {activeModal === 'createAlbum' && (
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Album Name</label>
-                      <input required type="text" placeholder="e.g. Wedding 2024" className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white outline-none focus:border-gold"
-                        value={newAlbumName} onChange={(e) => setNewAlbumName(e.target.value)} />
-                    </div>
-                  )}
+                <form onSubmit={handleCreatePost} className="space-y-6">
+                  {/* Toggle Post Type */}
+                  <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10">
+                    <button type="button" onClick={() => setPostType('image')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${postType === 'image' ? 'bg-gold text-black' : 'text-gray-500'}`}>Image</button>
+                    <button type="button" onClick={() => setPostType('video')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${postType === 'video' ? 'bg-gold text-black' : 'text-gray-500'}`}>Video</button>
+                  </div>
 
-                  {(activeModal === 'image' || activeModal === 'editPhoto') && (
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Target Album</label>
-                      <select required className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white outline-none focus:border-gold" 
-                        value={selectedAlbumId} onChange={(e) => setSelectedAlbumId(e.target.value)}>
-                        <option value="" className="bg-black">-- Choose Album --</option>
-                        {albumsList.map(a => <option key={a.id} value={a.id} className="bg-black">{a.name}</option>)}
-                      </select>
-                    </div>
-                  )}
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* Album Selection for Images */}
+                    {postType === 'image' && (
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-2 block">Link to Album</label>
+                        <select required className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-gold transition-all"
+                          value={selectedAlbumId} onChange={(e) => setSelectedAlbumId(e.target.value)}>
+                          <option value="" className="bg-black">-- Select Album --</option>
+                          {albumsList.map(a => <option key={a.id} value={a.id} className="bg-black">{a.name}</option>)}
+                        </select>
+                      </div>
+                    )}
 
-                  {activeModal === 'image' && (
-                    <div className="border-2 border-dashed border-white/10 p-8 rounded-2xl text-center relative hover:border-gold transition-colors">
-                      <input required type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
+                    {/* Content Details */}
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-gray-500 ml-2 mb-2 block">{postType === 'image' ? 'Caption' : 'Video Title'}</label>
+                      <input 
+                        required 
+                        type="text" 
+                        placeholder={postType === 'image' ? "Write a short caption..." : "Enter reel title..."}
+                        className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-gold transition-all"
+                        value={postType === 'image' ? caption : title}
+                        onChange={(e) => postType === 'image' ? setCaption(e.target.value) : setTitle(e.target.value)}
+                      />
+                    </div>
+
+                    {/* File Picker */}
+                    <div className="border-2 border-dashed border-white/10 rounded-[2rem] p-10 text-center hover:border-gold/50 transition-all group relative cursor-pointer">
+                      <input required type="file" accept={postType === 'image' ? "image/*" : "video/*"}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
                         onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                      <Upload className="mx-auto text-gold mb-2 opacity-50" size={32}/>
-                      <p className="text-xs text-gray-500">{selectedFile ? selectedFile.name : 'Select image file'}</p>
+                      <Upload className="mx-auto text-gold/30 group-hover:text-gold group-hover:scale-110 transition-all mb-4" size={48} />
+                      <p className="text-sm text-gray-400 font-mono">{selectedFile ? selectedFile.name : `Drop ${postType} here or click to browse`}</p>
                     </div>
-                  )}
+                  </div>
 
-                  <button disabled={submitting} type="submit" className="w-full btn-gold py-4 rounded-2xl font-bold flex justify-center items-center gap-2">
-                    {submitting ? <Loader2 className="animate-spin" /> : 'Confirm Action'}
+                  <button disabled={submitting} type="submit" className="w-full btn-gold py-5 rounded-2xl font-bold flex justify-center items-center gap-3 shadow-xl shadow-gold/20 active:scale-[0.98] transition-all">
+                    {submitting ? <Loader2 className="animate-spin" /> : <><Plus size={20}/> Post to Portfolio</>}
                   </button>
                 </form>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
+
       </div>
     </div>
   );
