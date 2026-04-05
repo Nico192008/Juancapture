@@ -36,7 +36,7 @@ export const Home = () => {
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
-            backgroundImage: 'url(https://images.pexels.com/photos/1779487/pexels-photo-1779487.jpeg?auto=compress&cs=tinysrgb&w=1920)',
+            backgroundImage: 'url(https://ubsnydvhhrqvbymjbtop.supabase.co/storage/v1/object/public/juancapture1's/file_000000008d9071faa08591b1e5f7ab58.png?auto=compress&cs=tinysrgb&w=1920)',
             filter: 'brightness(0.4)',
           }}
         />
