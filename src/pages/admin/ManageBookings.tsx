@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Mail, CheckCircle, Clock, Trash2, Send, AlertCircle } from 'lucide-react';
 import { Booking } from '../../types';
 import { supabase } from '../../lib/supabase';
-import emailjs from '@emailjs/browser'; // Inimport natin ang EmailJS
+import emailjs from '@emailjs/browser';
 
 export const ManageBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -53,20 +53,25 @@ export const ManageBookings = () => {
     }
   };
 
-  // MODIFIED: Ngayon ay gamit na ang EmailJS
   const sendConfirmationEmail = async (booking: Booking) => {
     try {
-      // Ang mga ID na ito ay makukuha mo sa EmailJS Dashboard
       const serviceId = "service_4n5zlku";
       const templateId = "template_z8t052n";
       const publicKey = "Jb0rUyGCKXb-bMlWt";
 
+      // FIX: Nililinis ang email address para walang hidden characters o extra spaces
+      const cleanEmail = booking.email.trim().replace(/[^\x00-\x7F]/g, "");
+
       const templateParams = {
         to_name: booking.name,
-        to_email: booking.email,
+        to_email: cleanEmail,
         event_type: booking.event_type,
-        event_date: new Date(booking.event_date).toLocaleDateString(),
-        message: "Your booking has been officially confirmed. We look forward to seeing you!",
+        event_date: new Date(booking.event_date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+        message: "Your booking has been officially confirmed by Juan Captures. We are excited to work with you!",
       };
 
       const result = await emailjs.send(
@@ -78,11 +83,12 @@ export const ManageBookings = () => {
 
       if (result.status === 200) {
         console.log('Email successfully sent via EmailJS!');
-        alert('Confirmation email sent to client!');
+        alert(`Success! Confirmation email sent to ${cleanEmail}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('EmailJS Error:', error);
-      alert('Confirmed in system, but failed to send email notification.');
+      // Mas malinaw na error message para malaman mo kung bakit fail
+      alert('Confirmed in system, but email failed: ' + (error?.text || 'Check connection'));
     }
   };
 
