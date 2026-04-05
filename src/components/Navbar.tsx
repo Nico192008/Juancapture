@@ -9,7 +9,7 @@ export const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Handle Scroll Effect for Navbar Background
+  // 1. Navbar Background Change on Scroll
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -18,40 +18,44 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close Mobile Menu on Route Change
+  // 2. Auto-close Mobile Menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location]);
 
-  // Smooth Scroll Function
-  const handleNavClick = (e, path, name) => {
-    // Kung ang "Book Now" ay dapat mag-scroll sa loob ng Home page
-    if (name === 'Book Now' && location.pathname === '/') {
-      e.preventDefault();
-      const target = document.getElementById('booking-section'); // Siguraduhin na may id="booking-section" ang target mo
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // 3. Smart Scroll Function for ALL Buttons
+  const handleNavClick = (e, targetId) => {
+    e.preventDefault();
+    
+    // Convert name to ID format (e.g., "Book Now" -> "booking")
+    const id = targetId === '/' ? 'home' : targetId.replace('/', '');
+
+    if (location.pathname === '/') {
+      // Kung nasa Home page, smooth scroll agad
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-      setIsMobileMenuOpen(false);
-    } 
-    // Kung nasa ibang page at pinindot ang Book Now, babalik muna sa Home bago mag-scroll
-    else if (name === 'Book Now' && location.pathname !== '/') {
-      e.preventDefault();
+    } else {
+      // Kung nasa ibang page, balik sa Home tapos scroll
       navigate('/');
       setTimeout(() => {
-        const target = document.getElementById('booking-section');
-        if (target) target.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300); // Konting delay para maka-load ang Home component
     }
+    setIsMobileMenuOpen(false);
   };
 
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Gallery', path: '/gallery' },
-    { name: 'Videos', path: '/videos' },
-    { name: 'About', path: '/about' },
-    { name: 'Contact', path: '/contact' },
-    { name: 'Book Now', path: '#booking-section' }, // Ginawang anchor link ang path
+    { name: 'Home', path: 'home' },
+    { name: 'Gallery', path: 'gallery' },
+    { name: 'Videos', path: 'videos' },
+    { name: 'About', path: 'about' },
+    { name: 'Contact', path: 'contact' },
+    { name: 'Book Now', path: 'booking' },
   ];
 
   return (
@@ -60,55 +64,56 @@ export const Navbar = () => {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.5 }}
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
-            ? 'glass-strong py-4'
-            : 'bg-gradient-to-b from-black/50 to-transparent py-6'
+            ? 'glass-strong py-3 shadow-lg'
+            : 'bg-gradient-to-b from-black/70 to-transparent py-5'
         }`}
       >
         <div className="container-custom px-6">
           <div className="flex items-center justify-between">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-3 group">
+            
+            {/* Logo - Auto scroll to Top/Home */}
+            <Link 
+              to="/" 
+              onClick={(e) => handleNavClick(e, 'home')}
+              className="flex items-center space-x-3 group"
+            >
               <motion.img
                 src="/1775314217196.jpg"
                 alt="Juan Captures"
-                className="h-12 w-12 object-contain transition-transform duration-300 group-hover:scale-110"
+                className="h-12 w-12 object-cover rounded-full border-2 border-gold/50 transition-transform duration-300 group-hover:scale-110"
                 whileHover={{ rotate: 5 }}
               />
-              <div>
-                <h1 className="text-2xl font-playfair font-bold text-white">
+              <div className="hidden sm:block">
+                <h1 className="text-xl font-playfair font-bold text-white tracking-widest uppercase">
                   Juan Captures
                 </h1>
-                <p className="text-xs font-vibes text-gold">
+                <p className="text-[10px] font-medium text-gold uppercase tracking-[0.2em]">
                   Creating Memories
                 </p>
               </div>
             </Link>
 
-            {/* Desktop Menu */}
+            {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center space-x-8">
               {navLinks.map((link) => (
-                <Link
+                <a
                   key={link.name}
-                  to={link.path}
-                  onClick={(e) => handleNavClick(e, link.path, link.name)}
-                  className={`font-medium transition-all duration-300 ${
-                    location.pathname === link.path
-                      ? 'text-gold'
-                      : 'text-white hover:text-gold'
-                  } ${
+                  href={`#${link.path}`}
+                  onClick={(e) => handleNavClick(e, link.path)}
+                  className={`text-sm font-medium tracking-widest uppercase transition-all duration-300 ${
                     link.name === 'Book Now'
-                      ? 'btn-gold-outline !py-2 !px-6 bg-gold/10'
-                      : ''
+                      ? 'btn-gold-outline !py-2 !px-6 bg-gold/5 hover:bg-gold hover:text-black'
+                      : 'text-white/80 hover:text-gold'
                   }`}
                 >
                   {link.name}
-                </Link>
+                </a>
               ))}
             </div>
 
-            {/* Mobile Toggle */}
+            {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden text-white hover:text-gold transition-colors p-2"
@@ -119,49 +124,44 @@ export const Navbar = () => {
         </div>
       </motion.nav>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, x: '100%' }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
-            transition={{ type: 'tween', duration: 0.3 }}
-            className="fixed inset-0 z-30 lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 lg:hidden"
           >
-            <div
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
               onClick={() => setIsMobileMenuOpen(false)}
             />
+            
+            {/* Menu Links */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'tween', duration: 0.3 }}
-              className="absolute right-0 top-0 bottom-0 w-4/5 max-w-sm glass-strong"
+              transition={{ type: 'tween', duration: 0.4 }}
+              className="absolute right-0 top-0 bottom-0 w-[280px] bg-[#0a0a0a] border-l border-gold/20 flex flex-col pt-24 px-8"
             >
-              <div className="flex flex-col h-full pt-24 px-8 space-y-2">
-                {navLinks.map((link, index) => (
-                  <motion.div
-                    key={link.name}
-                    initial={{ opacity: 0, x: 50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Link
-                      to={link.path}
-                      onClick={(e) => handleNavClick(e, link.path, link.name)}
-                      className={`block py-4 text-lg font-medium transition-colors ${
-                        location.pathname === link.path
-                          ? 'text-gold'
-                          : 'text-white hover:text-gold'
-                      }`}
-                    >
-                      {link.name}
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
+              {navLinks.map((link, index) => (
+                <motion.a
+                  key={link.name}
+                  href={`#${link.path}`}
+                  onClick={(e) => handleNavClick(e, link.path)}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`block py-5 text-lg font-medium tracking-widest uppercase border-b border-white/5 transition-colors ${
+                    link.name === 'Book Now' ? 'text-gold' : 'text-white/70 hover:text-gold'
+                  }`}
+                >
+                  {link.name}
+                </motion.a>
+              ))}
             </motion.div>
           </motion.div>
         )}
