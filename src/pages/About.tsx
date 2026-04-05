@@ -28,7 +28,7 @@ export const About = () => {
             className="glass-strong rounded-lg overflow-hidden"
           >
             <img
-              src="https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800"
+              src="https://raw.githubusercontent.com/Nico192008/Juancapture/refs/heads/main/public/FB_IMG_1775411020911.jpg?auto=compress&cs=tinysrgb&w=800"
               alt="Photographer"
               className="w-full h-full object-cover"
               loading="lazy"
