@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+Import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, CheckCircle, Clock, Trash2, Send, AlertCircle } from 'lucide-react';
 import { Booking } from '../../types';
 import { supabase } from '../../lib/supabase';
-import emailjs from '@emailjs/browser';
+import emailjs from '@emailjs/browser'; // Inimport natin ang EmailJS
 
 export const ManageBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -53,29 +53,20 @@ export const ManageBookings = () => {
     }
   };
 
-  // FIXED: Pinatibay ang email sending logic laban sa hidden characters
+  // MODIFIED: Ngayon ay gamit na ang EmailJS
   const sendConfirmationEmail = async (booking: Booking) => {
     try {
+      // Ang mga ID na ito ay makukuha mo sa EmailJS Dashboard
       const serviceId = "service_4n5zlku";
       const templateId = "template_z8t052n";
       const publicKey = "Jb0rUyGCKXb-bMlWt";
 
-      /** * ULTIMATE FIX FOR "ADDRESS NOT FOUND":
-       * .trim() - tinatanggal ang space sa unahan/hulihan.
-       * .replace(/[^\x20-\x7E]/g, "") - tinatanggal ang lahat ng invisible/special characters.
-       */
-      const sanitizedEmail = booking.email.trim().replace(/[^\x20-\x7E]/g, "");
-
       const templateParams = {
         to_name: booking.name,
-        to_email: sanitizedEmail,
+        to_email: booking.email,
         event_type: booking.event_type,
-        event_date: new Date(booking.event_date).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        }),
-        message: "Your booking has been officially confirmed by Juan Captures. We are looking forward to our session!",
+        event_date: new Date(booking.event_date).toLocaleDateString(),
+        message: "Your booking has been officially confirmed. We look forward to seeing you!",
       };
 
       const result = await emailjs.send(
@@ -86,11 +77,12 @@ export const ManageBookings = () => {
       );
 
       if (result.status === 200) {
-        alert(`Success! Juan Captures notification sent to ${sanitizedEmail}`);
+        console.log('Email successfully sent via EmailJS!');
+        alert('Confirmation email sent to client!');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('EmailJS Error:', error);
-      alert('Confirmed in system, but email failed: ' + (error?.text || 'Check recipient email address'));
+      alert('Confirmed in system, but failed to send email notification.');
     }
   };
 
