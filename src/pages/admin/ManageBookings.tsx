@@ -65,7 +65,7 @@ export const ManageBookings = () => {
         body: JSON.stringify({
           // Make sure to replace this with your verified domain in Resend
           // e.g., 'Your Business Name <info@yourdomain.com>'
-          from: 'Acme <onboarding@resend.dev>', 
+          from: 'Juan Capture <booking@juancapture.vercel.com>', 
           to: [booking.email],
           subject: 'Your Booking is Confirmed!',
           html: `
