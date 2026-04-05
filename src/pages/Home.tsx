@@ -36,7 +36,7 @@ export const Home = () => {
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
-            backgroundImage: 'url(https://ubsnydvhhrqvbymjbtop.supabase.co/storage/v1/object/public/juancapture1's/file_000000008d9071faa08591b1e5f7ab58.png?auto=compress&cs=tinysrgb&w=1920)',
+            backgroundImage: 'url(https://raw.githubusercontent.com/Nico192008/Juancapture-photos/refs/heads/main/file_000000008d9071faa08591b1e5f7ab58.png?auto=compress&cs=tinysrgb&w=1920)',
             filter: 'brightness(0.4)',
           }}
         />
