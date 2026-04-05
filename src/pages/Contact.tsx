@@ -79,7 +79,7 @@ export const Contact = () => {
                     href="mailto:info@juancaptures.com"
                     className="text-gray-400 hover:text-gold transition-colors"
                   >
-                    info@juancaptures.com
+                    juancapture1@gmail.com
                   </a>
                 </div>
               </div>
@@ -92,7 +92,7 @@ export const Contact = () => {
                     href="tel:+1234567890"
                     className="text-gray-400 hover:text-gold transition-colors"
                   >
-                    +1 (234) 567-890
+                    +639922183874
                   </a>
                 </div>
               </div>
@@ -102,7 +102,7 @@ export const Contact = () => {
                 <div>
                   <h3 className="text-white font-semibold mb-1">Location</h3>
                   <p className="text-gray-400">
-                    Based in Your City, Serving Nationwide
+                    Balingasag Misamis Oriental Philippines
                   </p>
                 </div>
               </div>
@@ -112,7 +112,7 @@ export const Contact = () => {
                 <div>
                   <h3 className="text-white font-semibold mb-1">Social Media</h3>
                   <a
-                    href="https://facebook.com"
+                    href="https://www.facebook.com/share/18iZ3mAZ2Q/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-400 hover:text-gold transition-colors"
