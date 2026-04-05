@@ -32,7 +32,7 @@ export const LoadingScreen = () => {
             <motion.img
               src="/1775314217196.jpg"
               alt="Juan Captures"
-              className="w-64 h-64 object-contain mx-auto animate-glow"
+              className="w-64 h-64 object-cover mx-autorounded-full animate-glow"
               animate={{
                 filter: [
                   'drop-shadow(0 0 20px rgba(212, 175, 55, 0.5))',
