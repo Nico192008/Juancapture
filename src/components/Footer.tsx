@@ -72,22 +72,22 @@ export const Footer = () => {
             </h4>
             <div className="space-y-3">
               <a
-                href="mailto:info@juancaptures.com"
+                href="mailto:juancapture1@gmail.com"
                 className="flex items-center space-x-2 text-gray-400 hover:text-gold transition-colors text-sm"
               >
                 <Mail size={16} />
-                <span>info@juancaptures.com</span>
+                <span>juancapture1@gmail.com</span>
               </a>
               <a
                 href="tel:+1234567890"
                 className="flex items-center space-x-2 text-gray-400 hover:text-gold transition-colors text-sm"
               >
                 <Phone size={16} />
-                <span>+1 (234) 567-890</span>
+                <span>+63 09922183874</span>
               </a>
               <div className="flex space-x-4 pt-2">
                 <a
-                  href="https://facebook.com"
+                  href="https://www.facebook.com/share/18iZ3mAZ2Q/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-gold transition-colors"
@@ -95,7 +95,7 @@ export const Footer = () => {
                   <Facebook size={20} />
                 </a>
                 <a
-                  href="https://instagram.com"
+                  href="https://www.facebook.com/share/18iZ3mAZ2Q/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-gold transition-colors"
