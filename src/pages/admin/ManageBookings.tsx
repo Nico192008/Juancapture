@@ -59,7 +59,7 @@ export const ManageBookings = () => {
       // Ang mga ID na ito ay makukuha mo sa EmailJS Dashboard
       const serviceId = "service_4n5zlku";
       const templateId = "template_z8t052n";
-      const publicKey = "";
+      const publicKey = "Jb0rUyGCKXb-bMlWt";
 
       const templateParams = {
         to_name: booking.name,
