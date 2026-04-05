@@ -25,16 +25,14 @@ export const Navbar = () => {
 
   // Smooth Scroll Function
   const handleNavClick = (e, path, name) => {
-    // Kung ang "Book Now" ay dapat mag-scroll sa loob ng Home page
     if (name === 'Book Now' && location.pathname === '/') {
       e.preventDefault();
-      const target = document.getElementById('booking-section'); // Siguraduhin na may id="booking-section" ang target mo
+      const target = document.getElementById('booking-section');
       if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
       setIsMobileMenuOpen(false);
     } 
-    // Kung nasa ibang page at pinindot ang Book Now, babalik muna sa Home bago mag-scroll
     else if (name === 'Book Now' && location.pathname !== '/') {
       e.preventDefault();
       navigate('/');
@@ -51,7 +49,7 @@ export const Navbar = () => {
     { name: 'Videos', path: '/videos' },
     { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
-    { name: 'Book Now', path: '#booking-section' }, // Ginawang anchor link ang path
+    { name: 'Book Now', path: '#booking-section' },
   ];
 
   return (
@@ -68,12 +66,13 @@ export const Navbar = () => {
       >
         <div className="container-custom px-6">
           <div className="flex items-center justify-between">
-            {/* Logo */}
+            {/* Logo Section */}
             <Link to="/" className="flex items-center space-x-3 group">
               <motion.img
                 src="/1775314217196.jpg"
                 alt="Juan Captures"
-                className="h-12 w-12 object-contain transition-transform duration-300 group-hover:scale-110"
+                /* UPDATED CLASSES BELOW: rounded-full and object-cover */
+                className="h-12 w-12 rounded-full object-cover border-2 border-gold/30 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:border-gold"
                 whileHover={{ rotate: 5 }}
               />
               <div>
