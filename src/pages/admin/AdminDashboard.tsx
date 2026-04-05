@@ -13,10 +13,11 @@ import {
   LayoutGrid,
   Clock,
   ChevronRight,
-  FileText,
+  Trash2,
   Play,
   Layers,
-  ArrowUpRight
+  Edit2,
+  Check
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -25,22 +26,27 @@ export const AdminDashboard = () => {
   const { user, isAdmin, signOut, loading: authLoading } = useAuthContext();
   const navigate = useNavigate();
   
-  // States
   const [currentTime, setCurrentTime] = useState(new Date());
   const [stats, setStats] = useState({ albums: 0, videos: 0, bookings: 0 });
   const [albumsList, setAlbumsList] = useState<{id: string, name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Modal States
+  // Create Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [postType, setPostType] = useState<'image' | 'video'>('image');
   const [submitting, setSubmitting] = useState(false);
   
+  // Album View Modal States (Para sa Edit/Delete Photos)
+  const [selectedAlbum, setSelectedAlbum] = useState<{id: string, name: string} | null>(null);
+  const [albumPhotos, setAlbumPhotos] = useState<any[]>([]);
+  const [fetchingPhotos, setFetchingPhotos] = useState(false);
+  const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
+  const [newCaption, setNewCaption] = useState('');
+
   // Form States
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState('');
-  const [caption, setCaption] = useState('');
   const [title, setTitle] = useState('');
 
   useEffect(() => {
@@ -57,28 +63,48 @@ export const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const [albums, vids, bookings] = await Promise.all([
-        supabase.from('albums').select('id, name'),
+        supabase.from('albums').select('id, name').order('created_at', { ascending: false }),
         supabase.from('videos').select('id', { count: 'exact', head: true }),
         supabase.from('bookings').select('id', { count: 'exact', head: true }),
       ]);
-      
       setAlbumsList(albums.data || []);
-      setStats({
-        albums: albums.data?.length || 0,
-        videos: vids.count || 0,
-        bookings: bookings.count || 0,
-      });
-    } finally {
-      setLoading(false);
-    }
+      setStats({ albums: albums.data?.length || 0, videos: vids.count || 0, bookings: bookings.count || 0 });
+    } finally { setLoading(false); }
   };
 
+  // --- Photo Management Logic ---
+  const openAlbum = async (album: {id: string, name: string}) => {
+    setSelectedAlbum(album);
+    setFetchingPhotos(true);
+    const { data } = await supabase.from('images').select('*').eq('album_id', album.id);
+    setAlbumPhotos(data || []);
+    setFetchingPhotos(false);
+  };
+
+  const deletePhoto = async (id: string, url: string) => {
+    if(!confirm("Sigurado ka bang buburahin ito?")) return;
+    try {
+      // 1. Delete sa Storage
+      const path = url.split('/').pop();
+      await supabase.storage.from('portfolio').remove([`images/${path}`]);
+      // 2. Delete sa Database
+      await supabase.from('images').delete().eq('id', id);
+      setAlbumPhotos(prev => prev.filter(p => p.id !== id));
+    } catch (err) { alert("Error deleting photo"); }
+  };
+
+  const updateCaption = async (id: string) => {
+    await supabase.from('images').update({ caption: newCaption }).eq('id', id);
+    setAlbumPhotos(prev => prev.map(p => p.id === id ? { ...p, caption: newCaption } : p));
+    setEditingPhotoId(null);
+  };
+
+  // --- Create Post Logic ---
   const uploadToBucket = async (file: File, folder: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
+    const fileName = `${Math.random()}.${file.name.split('.').pop()}`;
     const filePath = `${folder}/${fileName}`;
-    const { error: uploadError } = await supabase.storage.from('portfolio').upload(filePath, file);
-    if (uploadError) throw uploadError;
+    const { error } = await supabase.storage.from('portfolio').upload(filePath, file);
+    if (error) throw error;
     const { data: { publicUrl } } = supabase.storage.from('portfolio').getPublicUrl(filePath);
     return publicUrl;
   };
@@ -90,24 +116,13 @@ export const AdminDashboard = () => {
     try {
       if (postType === 'image') {
         const url = await uploadToBucket(selectedFile, 'images');
-        const { error } = await supabase.from('images').insert([{
-          album_id: selectedAlbumId,
-          image_url: url, // MATCHED TO YOUR DB
-          caption: caption
-        }]);
-        if (error) throw error;
+        await supabase.from('images').insert([{ album_id: selectedAlbumId, image_url: url, caption: '' }]);
       } else {
-        if (!thumbnailFile) throw new Error("Thumbnail is required for videos.");
-        const vUrl = await uploadToBucket(selectedFile, 'videos');
-        const tUrl = await uploadToBucket(thumbnailFile, 'thumbnails');
-        const { error } = await supabase.from('videos').insert([{
-          title: title,
-          video_url: vUrl, // MATCHED TO YOUR DB
-          thumbnail_url: tUrl // MATCHED TO YOUR DB
-        }]);
-        if (error) throw error;
+        if (!thumbnailFile) throw new Error("Thumbnail required");
+        const [vUrl, tUrl] = await Promise.all([uploadToBucket(selectedFile, 'videos'), uploadToBucket(thumbnailFile, 'thumbnails')]);
+        await supabase.from('videos').insert([{ title, video_url: vUrl, thumbnail_url: tUrl }]);
       }
-      alert("Published successfully!");
+      alert("Published!");
       resetForm();
       fetchDashboardData();
     } catch (err: any) { alert(err.message); } finally { setSubmitting(false); }
@@ -118,7 +133,6 @@ export const AdminDashboard = () => {
     setSelectedFile(null);
     setThumbnailFile(null);
     setSelectedAlbumId('');
-    setCaption('');
     setTitle('');
   };
 
@@ -128,164 +142,153 @@ export const AdminDashboard = () => {
     <div className="min-h-screen pt-24 pb-20 bg-[#050505] text-white">
       <div className="container-custom px-6">
         
-        {/* --- HEADER --- */}
+        {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <span className="text-gold text-xs font-mono tracking-[0.3em] uppercase mb-2 block">Control Center</span>
-            <h1 className="text-6xl font-playfair font-bold tracking-tight">Dashboard</h1>
-            <div className="flex items-center gap-2 text-gray-500 mt-4 font-mono text-sm">
-              <Clock size={14} className="text-gold"/>
-              <span>{currentTime.toLocaleTimeString()}</span>
-              <span className="mx-2 opacity-20">|</span>
-              <span>{currentTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+          <div>
+            <h1 className="text-5xl font-playfair font-bold tracking-tight">Dashboard</h1>
+            <div className="flex items-center gap-2 text-gray-500 mt-2 font-mono text-xs uppercase tracking-widest">
+              <Clock size={12} className="text-gold"/>
+              <span>{currentTime.toLocaleTimeString()} | {currentTime.toLocaleDateString()}</span>
             </div>
-          </motion.div>
-
+          </div>
           <div className="flex gap-3">
-            <button onClick={() => setShowCreateModal(true)} className="bg-gold text-black px-8 py-4 rounded-2xl font-bold flex items-center gap-2 hover:bg-white transition-all shadow-xl shadow-gold/10">
-              <Plus size={20} /> Create New Post
+            <button onClick={() => setShowCreateModal(true)} className="bg-gold text-black px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-white transition-all shadow-lg shadow-gold/10">
+              <Plus size={18} /> Create Post
             </button>
-            <button onClick={() => signOut()} className="glass-strong p-4 rounded-2xl text-gray-500 hover:text-red-500 border border-white/5 transition-all">
-              <LogOut size={22} />
-            </button>
+            <button onClick={() => signOut()} className="glass-strong p-3 rounded-xl text-gray-500 hover:text-white border border-white/5"><LogOut size={20} /></button>
           </div>
         </div>
 
-        {/* --- STATS GRID --- */}
+        {/* STATS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {[
-            { label: 'Total Bookings', count: stats.bookings, icon: Calendar, color: 'text-blue-400', link: '/admin/bookings', bg: 'bg-blue-400/5' },
-            { label: 'Photo Albums', count: stats.albums, icon: ImageIcon, color: 'text-gold', link: '/admin/albums', bg: 'bg-gold/5' },
-            { label: 'Video Reels', count: stats.videos, icon: Video, color: 'text-purple-400', link: '/admin/videos', bg: 'bg-purple-400/5' },
-          ].map((stat, i) => (
-            <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-              <Link to={stat.link} className="glass-strong block p-8 rounded-[2.5rem] border border-white/5 hover:border-white/20 transition-all group relative overflow-hidden">
-                <div className={`${stat.bg} ${stat.color} w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                  <stat.icon size={26} />
-                </div>
-                <div className="text-5xl font-bold mb-1 tracking-tighter">{stat.count}</div>
-                <div className="text-gray-500 text-xs uppercase tracking-widest font-bold flex items-center gap-2">
-                  {stat.label} <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
-                </div>
-              </Link>
-            </motion.div>
+            { label: 'Bookings', count: stats.bookings, icon: Calendar, color: 'text-blue-400', link: '/admin/bookings' },
+            { label: 'Albums', count: stats.albums, icon: ImageIcon, color: 'text-gold', link: '/admin/albums' },
+            { label: 'Videos', count: stats.videos, icon: Video, color: 'text-purple-400', link: '/admin/videos' },
+          ].map((stat) => (
+            <Link key={stat.label} to={stat.link} className="glass-strong p-8 rounded-3xl border border-white/5 hover:border-white/10 transition-all group">
+              <div className={`${stat.color} mb-4 bg-white/5 w-12 h-12 flex items-center justify-center rounded-xl group-hover:scale-110 transition-transform`}><stat.icon size={22}/></div>
+              <div className="text-4xl font-bold tracking-tighter">{stat.count}</div>
+              <div className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">{stat.label}</div>
+            </Link>
           ))}
         </div>
 
-        {/* --- MAIN CONTENT ARRANGEMENT --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Quick Nav (Left) */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="glass-strong p-8 rounded-[2.5rem] border border-white/5">
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-xl font-bold flex items-center gap-3"><Layers className="text-gold" size={20}/> Recent Albums</h3>
-                <Link to="/admin/albums" className="text-xs text-gold hover:underline">View All</Link>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {albumsList.slice(0, 4).map(album => (
-                  <div key={album.id} className="flex items-center justify-between p-5 bg-white/[0.03] border border-white/5 rounded-2xl group hover:bg-white/[0.05] transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-gold/10 rounded-xl flex items-center justify-center text-gold"><ImageIcon size={18}/></div>
-                      <span className="font-semibold tracking-tight">{album.name}</span>
-                    </div>
-                    <ChevronRight size={18} className="text-gray-700 group-hover:text-gold transition-colors" />
-                  </div>
-                ))}
-              </div>
-            </div>
+        {/* RECENT ALBUMS SECTION */}
+        <div className="glass-strong p-8 rounded-[2.5rem] border border-white/5">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-xl font-bold flex items-center gap-3"><Layers className="text-gold" size={20}/> Recent Albums</h3>
           </div>
-
-          {/* Side Panel (Right) */}
-          <div className="space-y-6">
-            <div className="glass-strong p-8 rounded-[2.5rem] border border-white/5 bg-gradient-to-br from-gold/10 to-transparent">
-              <FileText className="text-gold mb-4" size={32} />
-              <h3 className="text-xl font-bold mb-2">Review Bookings</h3>
-              <p className="text-gray-500 text-sm mb-6 leading-relaxed">Mayroon kang {stats.bookings} na pending at confirmed bookings na kailangang i-manage.</p>
-              <Link to="/admin/bookings" className="block w-full bg-white text-black text-center py-4 rounded-2xl font-bold hover:bg-gold transition-all">Manage Clients</Link>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {albumsList.map(album => (
+              <button key={album.id} onClick={() => openAlbum(album)} className="flex items-center justify-between p-5 bg-white/5 border border-white/5 rounded-2xl group hover:bg-white/10 transition-all text-left">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-gold/10 rounded-xl flex items-center justify-center text-gold"><ImageIcon size={18}/></div>
+                  <span className="font-semibold">{album.name}</span>
+                </div>
+                <ChevronRight size={16} className="text-gray-600 group-hover:text-gold" />
+              </button>
+            ))}
           </div>
-
         </div>
 
-        {/* --- CREATE POST MODAL --- */}
+        {/* ALBUM PHOTO VIEWER MODAL */}
+        <AnimatePresence>
+          {selectedAlbum && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedAlbum(null)} className="absolute inset-0 bg-black/95 backdrop-blur-md" />
+              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="relative glass-strong w-full max-w-5xl h-[80vh] flex flex-col p-8 rounded-[3rem] border border-white/10 overflow-hidden">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-bold tracking-tight text-gold uppercase">{selectedAlbum.name} <span className="text-gray-500 text-sm ml-2">({albumPhotos.length} photos)</span></h2>
+                  <button onClick={() => setSelectedAlbum(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X/></button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  {fetchingPhotos ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gold" size={40}/></div> : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {albumPhotos.map(photo => (
+                        <div key={photo.id} className="group relative bg-white/5 rounded-2xl overflow-hidden border border-white/5">
+                          <img src={photo.image_url} alt="" className="w-full h-40 object-cover" />
+                          <div className="p-3">
+                            {editingPhotoId === photo.id ? (
+                              <div className="flex gap-2">
+                                <input autoFocus className="bg-black/50 border border-gold/50 rounded px-2 py-1 text-xs w-full outline-none" value={newCaption} onChange={(e) => setNewCaption(e.target.value)} />
+                                <button onClick={() => updateCaption(photo.id)} className="text-emerald-400"><Check size={16}/></button>
+                              </div>
+                            ) : (
+                              <div className="flex justify-between items-center">
+                                <p className="text-[10px] text-gray-400 truncate pr-2">{photo.caption || "No caption"}</p>
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => { setEditingPhotoId(photo.id); setNewCaption(photo.caption || ''); }} className="text-gold"><Edit2 size={14}/></button>
+                                  <button onClick={() => deletePhoto(photo.id, photo.image_url)} className="text-red-500"><Trash2 size={14}/></button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* CREATE POST MODAL */}
         <AnimatePresence>
           {showCreateModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={resetForm} className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
-              <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="relative glass-strong w-full max-w-2xl p-10 rounded-[3rem] border border-white/10">
-                
-                <div className="flex justify-between items-center mb-10">
-                  <h2 className="text-3xl font-playfair font-bold">New Portfolio Post</h2>
-                  <button onClick={resetForm} className="p-2 hover:bg-white/10 rounded-full"><X/></button>
-                </div>
-
-                <form onSubmit={handleCreatePost} className="space-y-8">
-                  {/* Type Switcher */}
-                  <div className="flex p-1.5 bg-white/5 rounded-2xl border border-white/10">
-                    <button type="button" onClick={() => setPostType('image')} className={`flex-1 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${postType === 'image' ? 'bg-gold text-black shadow-lg shadow-gold/20' : 'text-gray-500'}`}><ImageIcon size={18}/> Image</button>
-                    <button type="button" onClick={() => setPostType('video')} className={`flex-1 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${postType === 'video' ? 'bg-gold text-black shadow-lg shadow-gold/20' : 'text-gray-500'}`}><Video size={18}/> Video</button>
+              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="relative glass-strong w-full max-w-xl p-10 rounded-[3rem] border border-white/10">
+                <h2 className="text-2xl font-bold mb-8 text-center uppercase tracking-tighter text-gold">Create Portfolio Post</h2>
+                <form onSubmit={handleCreatePost} className="space-y-6">
+                  <div className="flex p-1 bg-white/5 rounded-2xl">
+                    <button type="button" onClick={() => setPostType('image')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${postType === 'image' ? 'bg-gold text-black' : 'text-gray-500'}`}>Photo</button>
+                    <button type="button" onClick={() => setPostType('video')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${postType === 'video' ? 'bg-gold text-black' : 'text-gray-500'}`}>Video</button>
                   </div>
 
-                  <div className="space-y-6">
-                    {postType === 'image' ? (
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="md:col-span-2">
-                            <label className="text-[10px] font-bold text-gray-500 uppercase ml-2 mb-2 block tracking-widest">Target Album</label>
-                            <select required className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:border-gold transition-all"
-                              value={selectedAlbumId} onChange={(e) => setSelectedAlbumId(e.target.value)}>
-                              <option value="" className="bg-black">-- Select Destination --</option>
-                              {albumsList.map(a => <option key={a.id} value={a.id} className="bg-black">{a.name}</option>)}
-                            </select>
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="text-[10px] font-bold text-gray-500 uppercase ml-2 mb-2 block tracking-widest">Caption</label>
-                            <input required type="text" placeholder="Short description..." className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:border-gold transition-all"
-                              value={caption} onChange={(e) => setCaption(e.target.value)} />
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="space-y-6">
-                        <div>
-                          <label className="text-[10px] font-bold text-gray-500 uppercase ml-2 mb-2 block tracking-widest">Video Title</label>
-                          <input required type="text" placeholder="e.g. Wedding Cinematic Reel" className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:border-gold transition-all"
-                            value={title} onChange={(e) => setTitle(e.target.value)} />
-                        </div>
+                  {postType === 'image' ? (
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase ml-2 mb-2 block tracking-widest">Select Album</label>
+                      <select required className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-gold"
+                        value={selectedAlbumId} onChange={(e) => setSelectedAlbumId(e.target.value)}>
+                        <option value="" className="bg-black">-- Choose Album --</option>
+                        {albumsList.map(a => <option key={a.id} value={a.id} className="bg-black">{a.name}</option>)}
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase ml-2 mb-2 block tracking-widest">Video Title</label>
+                      <input required type="text" placeholder="Title..." className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-gold"
+                        value={title} onChange={(e) => setTitle(e.target.value)} />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border-2 border-dashed border-white/10 rounded-2xl p-6 text-center relative hover:border-gold transition-all">
+                      <input required type="file" accept={postType === 'image' ? "image/*" : "video/*"} className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                      <Upload className="mx-auto text-gold/30 mb-2" size={24} />
+                      <p className="text-[10px] text-gray-500 truncate">{selectedFile ? selectedFile.name : `Select ${postType}`}</p>
+                    </div>
+                    {postType === 'video' && (
+                      <div className="border-2 border-dashed border-white/10 rounded-2xl p-6 text-center relative hover:border-gold transition-all">
+                        <input required type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
+                        <ImageIcon className="mx-auto text-purple-400/30 mb-2" size={24} />
+                        <p className="text-[10px] text-gray-500 truncate">{thumbnailFile ? thumbnailFile.name : 'Upload Thumbnail'}</p>
                       </div>
                     )}
-
-                    {/* Multi-File Upload Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="border-2 border-dashed border-white/10 rounded-[2rem] p-8 text-center relative hover:border-gold transition-all group">
-                        <input required type="file" accept={postType === 'image' ? "image/*" : "video/*"} className="absolute inset-0 opacity-0 cursor-pointer"
-                          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                        <div className="bg-gold/10 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 text-gold group-hover:scale-110 transition-transform">
-                          {postType === 'image' ? <ImageIcon size={24}/> : <Play size={24}/>}
-                        </div>
-                        <p className="text-[10px] font-mono text-gray-500 truncate px-4">{selectedFile ? selectedFile.name : `Select ${postType}`}</p>
-                      </div>
-
-                      {postType === 'video' && (
-                        <div className="border-2 border-dashed border-white/10 rounded-[2rem] p-8 text-center relative hover:border-gold transition-all group">
-                          <input required type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer"
-                            onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
-                          <div className="bg-purple-500/10 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 text-purple-400 group-hover:scale-110 transition-transform"><ImageIcon size={24}/></div>
-                          <p className="text-[10px] font-mono text-gray-500 truncate px-4">{thumbnailFile ? thumbnailFile.name : 'Upload Thumbnail'}</p>
-                        </div>
-                      )}
-                    </div>
                   </div>
 
-                  <button disabled={submitting} type="submit" className="w-full bg-gold text-black py-5 rounded-2xl font-bold text-lg flex justify-center items-center gap-3 shadow-2xl shadow-gold/20 hover:scale-[1.02] active:scale-95 transition-all">
-                    {submitting ? <Loader2 className="animate-spin" /> : 'Confirm & Publish'}
+                  <button disabled={submitting} type="submit" className="w-full bg-gold text-black py-4 rounded-2xl font-bold flex justify-center items-center gap-2 shadow-xl shadow-gold/20 active:scale-95 transition-all">
+                    {submitting ? <Loader2 className="animate-spin" /> : 'Publish to Portfolio'}
                   </button>
                 </form>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
+
       </div>
     </div>
   );
