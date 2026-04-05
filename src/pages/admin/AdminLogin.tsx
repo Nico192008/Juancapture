@@ -62,12 +62,13 @@ export const AdminLogin = () => {
             <motion.img
               src="/1775314217196.jpg"
               alt="Juan Captures"
-              className="h-24 w-24 object-contain mx-auto mb-4"
+              /* UPDATED CLASSES BELOW: rounded-full makes it a circle, object-cover prevents stretching */
+              className="h-24 w-24 object-cover rounded-full mx-auto mb-4 border-2 border-gold/30"
               animate={{
                 filter: [
-                  'drop-shadow(0 0 20px rgba(212, 175, 55, 0.5))',
-                  'drop-shadow(0 0 40px rgba(212, 175, 55, 0.8))',
-                  'drop-shadow(0 0 20px rgba(212, 175, 55, 0.5))',
+                  'drop-shadow(0 0 20px rgba(212, 175, 55, 0.4))',
+                  'drop-shadow(0 0 40px rgba(212, 175, 55, 0.6))',
+                  'drop-shadow(0 0 20px rgba(212, 175, 55, 0.4))',
                 ],
               }}
               transition={{
@@ -79,7 +80,7 @@ export const AdminLogin = () => {
             <h1 className="text-3xl font-playfair font-bold text-white mb-2">
               Admin Panel
             </h1>
-            <p className="text-gold font-vibes">Juan Captures</p>
+            <p className="text-gold font-vibes text-xl">Juan Captures</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
