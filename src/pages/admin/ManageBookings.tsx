@@ -38,6 +38,7 @@ export const ManageBookings = () => {
 
       if (error) throw error;
 
+      // Automatic email trigger once status is changed to 'confirmed'
       if (status === 'confirmed') {
         const booking = bookings.find(b => b.id === id);
         if (booking) {
@@ -52,28 +53,42 @@ export const ManageBookings = () => {
     }
   };
 
-  
+  // MODIFIED: Now uses Resend API directly
   const sendConfirmationEmail = async (booking: Booking) => {
-  try {
-    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-booking-confirmation`;
-    await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({
-        name: booking.name,
-        email: booking.email,
-        eventType: booking.event_type,
-        eventDate: booking.event_date,
-        message: `Your booking has been confirmed!`,
-      }),
-    });
-  } catch (error) {
-    console.error('Error sending confirmation email:', error);
-  }
-};
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          // Make sure to replace this with your verified domain in Resend
+          // e.g., 'Your Business Name <info@yourdomain.com>'
+          from: 'Acme <onboarding@resend.dev>', 
+          to: [booking.email],
+          subject: 'Your Booking is Confirmed!',
+          html: `
+            <h2>Booking Confirmation</h2>
+            <p>Hi ${booking.name},</p>
+            <p>Great news! Your booking for <strong>${booking.event_type}</strong> on <strong>${new Date(booking.event_date).toLocaleDateString()}</strong> has been officially confirmed.</p>
+            <p>If you have any questions, feel free to reply to this email.</p>
+            <p>Thank you!</p>
+          `,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Resend API Error');
+      }
+
+      console.log('Confirmation email sent successfully via Resend!');
+    } catch (error) {
+      console.error('Error sending confirmation email:', error);
+      alert('Booking was confirmed, but failed to send the email notification.');
+    }
+  };
 
   const deleteBooking = async (id: string) => {
     if (!confirm('Are you sure you want to delete this booking?')) return;
