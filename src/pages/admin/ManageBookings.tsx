@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Mail, CheckCircle, Clock, Trash2, Send, AlertCircle } from 'lucide-react';
 import { Booking } from '../../types';
 import { supabase } from '../../lib/supabase';
 
@@ -36,10 +37,53 @@ export const ManageBookings = () => {
         .eq('id', id);
 
       if (error) throw error;
+
+      if (status === 'confirmed') {
+        const booking = bookings.find(b => b.id === id);
+        if (booking) {
+          await sendConfirmationEmail(booking);
+        }
+      }
+
       fetchBookings();
     } catch (error) {
       console.error('Error updating booking:', error);
       alert('Error updating booking status');
+    }
+  };
+
+  const sendConfirmationEmail = async (booking: Booking) => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-booking-confirmation`;
+      await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          name: booking.name,
+          email: booking.email,
+          eventType: booking.event_type,
+          eventDate: booking.event_date,
+          message: `Your booking has been confirmed!`,
+        }),
+      });
+    } catch (error) {
+      console.error('Error sending confirmation email:', error);
+    }
+  };
+
+  const deleteBooking = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this booking?')) return;
+
+    try {
+      const { error } = await supabase.from('bookings').delete().eq('id', id);
+      if (error) throw error;
+      fetchBookings();
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      alert('Error deleting booking');
     }
   };
 
@@ -67,66 +111,123 @@ export const ManageBookings = () => {
         </div>
 
         <div className="space-y-4">
-          {bookings.map((booking) => (
-            <motion.div
-              key={booking.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-strong p-6 rounded-lg"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Name</p>
-                  <p className="text-white font-semibold">{booking.name}</p>
+          {bookings.map((booking, index) => {
+            const status = booking.status || 'pending';
+            const statusConfig = {
+              pending: { icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+              confirmed: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-500/20' },
+              cancelled: { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-500/20' },
+            };
+            const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+            const StatusIcon = config.icon;
+
+            return (
+              <motion.div
+                key={booking.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="glass-strong p-6 rounded-lg hover:shadow-gold transition-all duration-300"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-2xl font-playfair font-bold text-white mb-2">
+                      {booking.name}
+                    </h3>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <a
+                        href={`mailto:${booking.email}`}
+                        className="text-gold hover:text-gold-light transition-colors flex items-center space-x-1"
+                      >
+                        <Mail size={16} />
+                        <span>{booking.email}</span>
+                      </a>
+                    </div>
+                  </div>
+                  <div className={`flex items-center space-x-1 px-3 py-1 rounded-full ${config.bg}`}>
+                    <StatusIcon size={18} className={config.color} />
+                    <span className={`${config.color} text-sm font-semibold`}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Email</p>
-                  <p className="text-white">{booking.email}</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Event Type</p>
+                    <p className="text-white font-semibold">{booking.event_type}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Event Date</p>
+                    <p className="text-gold">
+                      {new Date(booking.event_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </p>
+                  </div>
+                  {booking.phone && (
+                    <div>
+                      <p className="text-gray-400 text-xs mb-1">Phone</p>
+                      <p className="text-white">{booking.phone}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-gray-400 text-xs mb-1">Submitted</p>
+                    <p className="text-white">
+                      {booking.created_at
+                        ? new Date(booking.created_at).toLocaleDateString()
+                        : '-'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Event Type</p>
-                  <p className="text-gold">{booking.event_type}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400 text-sm mb-1">Event Date</p>
-                  <p className="text-white">
-                    {new Date(booking.event_date).toLocaleDateString()}
+
+                <div className="mb-4">
+                  <p className="text-gray-400 text-xs mb-1">Message</p>
+                  <p className="text-gray-300 text-sm line-clamp-2">
+                    {booking.message}
                   </p>
                 </div>
-              </div>
 
-              {booking.phone && (
-                <div className="mb-4">
-                  <p className="text-gray-400 text-sm mb-1">Phone</p>
-                  <p className="text-white">{booking.phone}</p>
+                <div className="flex flex-wrap gap-3 items-center">
+                  <select
+                    value={status}
+                    onChange={(e) => updateStatus(booking.id!, e.target.value)}
+                    className="glass px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  >
+                    <option value="pending" className="bg-dark-100">
+                      Pending
+                    </option>
+                    <option value="confirmed" className="bg-dark-100">
+                      Confirmed
+                    </option>
+                    <option value="cancelled" className="bg-dark-100">
+                      Cancelled
+                    </option>
+                  </select>
+
+                  {status === 'confirmed' && (
+                    <button
+                      onClick={() => sendConfirmationEmail(booking)}
+                      className="glass px-3 py-2 rounded-lg text-gold hover:bg-white/10 transition-colors flex items-center space-x-1 text-sm"
+                    >
+                      <Send size={16} />
+                      <span>Send Email</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => deleteBooking(booking.id!)}
+                    className="glass px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors flex items-center space-x-1 text-sm ml-auto"
+                  >
+                    <Trash2 size={16} />
+                    <span>Delete</span>
+                  </button>
                 </div>
-              )}
-
-              <div className="mb-4">
-                <p className="text-gray-400 text-sm mb-1">Message</p>
-                <p className="text-white">{booking.message}</p>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <p className="text-gray-400 text-sm">Status:</p>
-                <select
-                  value={booking.status || 'pending'}
-                  onChange={(e) => updateStatus(booking.id!, e.target.value)}
-                  className="glass px-4 py-2 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-gold"
-                >
-                  <option value="pending" className="bg-dark-100">
-                    Pending
-                  </option>
-                  <option value="confirmed" className="bg-dark-100">
-                    Confirmed
-                  </option>
-                  <option value="cancelled" className="bg-dark-100">
-                    Cancelled
-                  </option>
-                </select>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
 
         {bookings.length === 0 && (

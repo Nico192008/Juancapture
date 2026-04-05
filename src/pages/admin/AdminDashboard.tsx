@@ -59,9 +59,13 @@ export const AdminDashboard = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      navigate('/admin/login');
+      setTimeout(() => {
+        navigate('/admin/login', { replace: true });
+        window.location.href = '/admin/login';
+      }, 100);
     } catch (error) {
       console.error('Error signing out:', error);
+      navigate('/admin/login', { replace: true });
     }
   };
 

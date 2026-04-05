@@ -1,16 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Lock, Mail } from 'lucide-react';
+import { LogIn, AlertCircle, Loader } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
 
 export const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuthContext();
+  const [error, setError] = useState('');
+  const { signIn, user, isAdmin, loading: authLoading } = useAuthContext();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading && user && isAdmin) {
+      navigate('/admin/dashboard');
+    }
+  }, [user, isAdmin, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,41 +24,67 @@ export const AdminLogin = () => {
     setIsLoading(true);
 
     try {
+      if (!email || !password) {
+        throw new Error('Please fill in all fields');
+      }
+
       await signIn(email, password);
-      navigate('/admin/dashboard');
-    } catch (err) {
-      setError('Invalid email or password');
-      console.error('Login error:', err);
+      setTimeout(() => {
+        navigate('/admin/dashboard');
+      }, 500);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      setError(errorMessage);
+      console.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-dark flex items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-gold" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
+    <div className="min-h-screen bg-dark flex items-center justify-center px-6 py-20">
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="text-center mb-8">
-          <img
-            src="/1775314217196.jpg"
-            alt="Juan Captures"
-            className="h-20 w-20 object-contain mx-auto mb-4"
-          />
-          <h1 className="text-4xl font-playfair font-bold text-white mb-2">
-            Admin Login
-          </h1>
-          <p className="text-gray-400">Access your dashboard</p>
-        </div>
-
         <div className="glass-strong p-8 rounded-lg">
+          <div className="text-center mb-8">
+            <motion.img
+              src="/1775314217196.jpg"
+              alt="Juan Captures"
+              className="h-24 w-24 object-contain mx-auto mb-4"
+              animate={{
+                filter: [
+                  'drop-shadow(0 0 20px rgba(212, 175, 55, 0.5))',
+                  'drop-shadow(0 0 40px rgba(212, 175, 55, 0.8))',
+                  'drop-shadow(0 0 20px rgba(212, 175, 55, 0.5))',
+                ],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            />
+            <h1 className="text-3xl font-playfair font-bold text-white mb-2">
+              Admin Panel
+            </h1>
+            <p className="text-gold font-vibes">Juan Captures</p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-white mb-2">
-                <Mail className="inline mr-2" size={18} />
+              <label htmlFor="email" className="block text-white mb-2 text-sm font-medium">
                 Email Address
               </label>
               <input
@@ -60,15 +92,14 @@ export const AdminLogin = () => {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold"
-                placeholder="admin@juancaptures.com"
+                disabled={isLoading}
+                className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold disabled:opacity-50"
+                placeholder="admin@example.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-white mb-2">
-                <Lock className="inline mr-2" size={18} />
+              <label htmlFor="password" className="block text-white mb-2 text-sm font-medium">
                 Password
               </label>
               <input
@@ -76,38 +107,59 @@ export const AdminLogin = () => {
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold"
-                placeholder="••••••••"
+                disabled={isLoading}
+                className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold disabled:opacity-50"
+                placeholder="Enter your password"
               />
             </div>
 
             {error && (
-              <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg flex items-start space-x-3"
+              >
+                <AlertCircle size={20} className="mt-0.5 flex-shrink-0" />
+                <p className="text-sm">{error}</p>
+              </motion.div>
             )}
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full btn-gold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-gold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
-                <span className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-dark mr-2" />
-                  Signing in...
-                </span>
+                <>
+                  <Loader size={20} className="animate-spin" />
+                  <span>Logging in...</span>
+                </>
               ) : (
-                'Sign In'
+                <>
+                  <LogIn size={20} />
+                  <span>Admin Login</span>
+                </>
               )}
             </button>
           </form>
+
+          <div className="mt-8 pt-6 border-t border-white/10">
+            <p className="text-center text-gray-400 text-sm">
+              Protected admin area. Only authorized personnel.
+            </p>
+          </div>
         </div>
 
-        <p className="text-center text-gray-400 text-sm mt-6">
-          Protected area - Authorized access only
-        </p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+          className="mt-8 text-center"
+        >
+          <a href="/" className="text-gold hover:text-gold-light transition-colors">
+            ← Back to Home
+          </a>
+        </motion.div>
       </motion.div>
     </div>
   );

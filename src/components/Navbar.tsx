@@ -79,6 +79,9 @@ export const Navbar = () => {
                   {link.name}
                 </Link>
               ))}
+              <a href="/admin/login" className="btn-gold-outline !py-2 !px-6">
+                Admin
+              </a>
             </div>
 
             <button
@@ -111,7 +114,7 @@ export const Navbar = () => {
               transition={{ type: 'tween', duration: 0.3 }}
               className="absolute right-0 top-0 bottom-0 w-4/5 max-w-sm glass-strong"
             >
-              <div className="flex flex-col h-full pt-24 px-8">
+              <div className="flex flex-col h-full pt-24 px-8 space-y-2">
                 {navLinks.map((link, index) => (
                   <motion.div
                     key={link.path}
@@ -131,6 +134,16 @@ export const Navbar = () => {
                     </Link>
                   </motion.div>
                 ))}
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: navLinks.length * 0.1 }}
+                  className="pt-4 border-t border-white/10"
+                >
+                  <a href="/admin/login" className="block btn-gold text-center">
+                    Admin Login
+                  </a>
+                </motion.div>
               </div>
             </motion.div>
           </motion.div>

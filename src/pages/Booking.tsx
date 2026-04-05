@@ -47,6 +47,26 @@ export const Booking = () => {
 
       if (error) throw error;
 
+      try {
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-booking-confirmation`;
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            eventType: formData.event_type,
+            eventDate: formData.event_date,
+            message: formData.message,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Email notification error:', emailError);
+      }
+
       setSubmitStatus('success');
       setFormData({
         name: '',
