@@ -14,7 +14,7 @@ export const ManageBookings = () => {
   const EMAILJS_SERVICE_ID = "service_4n5zlku";
   const EMAILJS_PUBLIC_KEY = "Jb0rUyGCKXb-bMlWt";
   const CONFIRMATION_TEMPLATE_ID = "template_z8t052n";
-  const REJECTION_TEMPLATE_ID = "template_REJECTION_ID"; // <--- ILAGAY DITO ANG REJECTION TEMPLATE ID
+  const REJECTION_TEMPLATE_ID = "template_8wjwei8"; // <--- ILAGAY DITO ANG REJECTION TEMPLATE ID
 
   useEffect(() => {
     fetchBookings();
