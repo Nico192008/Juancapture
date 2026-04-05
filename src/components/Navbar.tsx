@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -7,19 +7,43 @@ export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
+  // Handle Scroll Effect for Navbar Background
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
-
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close Mobile Menu on Route Change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location]);
+
+  // Smooth Scroll Function
+  const handleNavClick = (e, path, name) => {
+    // Kung ang "Book Now" ay dapat mag-scroll sa loob ng Home page
+    if (name === 'Book Now' && location.pathname === '/') {
+      e.preventDefault();
+      const target = document.getElementById('booking-section'); // Siguraduhin na may id="booking-section" ang target mo
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      setIsMobileMenuOpen(false);
+    } 
+    // Kung nasa ibang page at pinindot ang Book Now, babalik muna sa Home bago mag-scroll
+    else if (name === 'Book Now' && location.pathname !== '/') {
+      e.preventDefault();
+      navigate('/');
+      setTimeout(() => {
+        const target = document.getElementById('booking-section');
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  };
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -27,7 +51,7 @@ export const Navbar = () => {
     { name: 'Videos', path: '/videos' },
     { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
-    { name: 'Book Now', path: '/booking' },
+    { name: 'Book Now', path: '#booking-section' }, // Ginawang anchor link ang path
   ];
 
   return (
@@ -44,6 +68,7 @@ export const Navbar = () => {
       >
         <div className="container-custom px-6">
           <div className="flex items-center justify-between">
+            {/* Logo */}
             <Link to="/" className="flex items-center space-x-3 group">
               <motion.img
                 src="/1775314217196.jpg"
@@ -61,29 +86,29 @@ export const Navbar = () => {
               </div>
             </Link>
 
+            {/* Desktop Menu */}
             <div className="hidden lg:flex items-center space-x-8">
               {navLinks.map((link) => (
                 <Link
-                  key={link.path}
+                  key={link.name}
                   to={link.path}
+                  onClick={(e) => handleNavClick(e, link.path, link.name)}
                   className={`font-medium transition-all duration-300 ${
                     location.pathname === link.path
                       ? 'text-gold'
                       : 'text-white hover:text-gold'
                   } ${
                     link.name === 'Book Now'
-                      ? 'btn-gold-outline !py-2 !px-6'
+                      ? 'btn-gold-outline !py-2 !px-6 bg-gold/10'
                       : ''
                   }`}
                 >
                   {link.name}
                 </Link>
               ))}
-              <a href="/admin/login" className="btn-gold-outline !py-2 !px-6">
-                Admin
-              </a>
             </div>
 
+            {/* Mobile Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden text-white hover:text-gold transition-colors p-2"
@@ -94,6 +119,7 @@ export const Navbar = () => {
         </div>
       </motion.nav>
 
+      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -117,13 +143,14 @@ export const Navbar = () => {
               <div className="flex flex-col h-full pt-24 px-8 space-y-2">
                 {navLinks.map((link, index) => (
                   <motion.div
-                    key={link.path}
+                    key={link.name}
                     initial={{ opacity: 0, x: 50 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                   >
                     <Link
                       to={link.path}
+                      onClick={(e) => handleNavClick(e, link.path, link.name)}
                       className={`block py-4 text-lg font-medium transition-colors ${
                         location.pathname === link.path
                           ? 'text-gold'
@@ -134,16 +161,6 @@ export const Navbar = () => {
                     </Link>
                   </motion.div>
                 ))}
-                <motion.div
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: navLinks.length * 0.1 }}
-                  className="pt-4 border-t border-white/10"
-                >
-                  <a href="/admin/login" className="block btn-gold text-center">
-                    Admin Login
-                  </a>
-                </motion.div>
               </div>
             </motion.div>
           </motion.div>
