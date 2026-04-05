@@ -18,28 +18,35 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close Mobile Menu on Route Change
+  // AUTO-SCROLL LOGIC: Tinitingnan kung may #booking-section sa URL pagka-load
   useEffect(() => {
+    if (location.pathname === '/' && location.hash === '#booking-section') {
+      const target = document.getElementById('booking-section');
+      if (target) {
+        // Konting delay para siguradong tapos na ang page transition
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
     setIsMobileMenuOpen(false);
   }, [location]);
 
-  // Smooth Scroll Function
+  // Optimized Click Handler
   const handleNavClick = (e, path, name) => {
-    if (name === 'Book Now' && location.pathname === '/') {
+    if (name === 'Book Now') {
       e.preventDefault();
-      const target = document.getElementById('booking-section');
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (location.pathname === '/') {
+        // Kung nasa Home na, scroll agad
+        const target = document.getElementById('booking-section');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } else {
+        // Kung nasa ibang page, pumunta sa Home na may hash
+        navigate('/#booking-section');
       }
       setIsMobileMenuOpen(false);
-    } 
-    else if (name === 'Book Now' && location.pathname !== '/') {
-      e.preventDefault();
-      navigate('/');
-      setTimeout(() => {
-        const target = document.getElementById('booking-section');
-        if (target) target.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
     }
   };
 
@@ -57,48 +64,49 @@ export const Navbar = () => {
       <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        transition={{ duration: 0.5 }}
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
-            ? 'glass-strong py-4'
-            : 'bg-gradient-to-b from-black/50 to-transparent py-6'
+            ? 'bg-black/80 backdrop-blur-md py-3 shadow-lg'
+            : 'bg-gradient-to-b from-black/70 to-transparent py-5'
         }`}
       >
-        <div className="container-custom px-6">
+        <div className="max-w-7xl mx-auto px-6">
           <div className="flex items-center justify-between">
-            {/* Logo Section */}
+            {/* Circular Logo Section */}
             <Link to="/" className="flex items-center space-x-3 group">
-              <motion.img
-                src="/1775314217196.jpg"
-                alt="Juan Captures"
-                /* UPDATED CLASSES BELOW: rounded-full and object-cover */
-                className="h-12 w-12 rounded-full object-cover border-2 border-gold/30 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:border-gold"
-                whileHover={{ rotate: 5 }}
-              />
-              <div>
-                <h1 className="text-2xl font-playfair font-bold text-white">
+              <div className="relative">
+                <motion.img
+                  src="/1775314217196.jpg"
+                  alt="Juan Captures"
+                  className="h-12 w-12 rounded-full object-cover border-2 border-gold/40 transition-all duration-300 group-hover:scale-110 group-hover:border-gold"
+                  whileHover={{ rotate: 5 }}
+                />
+                <div className="absolute inset-0 rounded-full shadow-[0_0_15px_rgba(212,175,55,0.3)] group-hover:shadow-[0_0_20px_rgba(212,175,55,0.5)] transition-all duration-300" />
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-xl md:text-2xl font-serif font-bold text-white tracking-tight leading-none">
                   Juan Captures
                 </h1>
-                <p className="text-xs font-vibes text-gold">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-gold font-light mt-1">
                   Creating Memories
-                </p>
+                </span>
               </div>
             </Link>
 
             {/* Desktop Menu */}
-            <div className="hidden lg:flex items-center space-x-8">
+            <div className="hidden lg:flex items-center space-x-10">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   to={link.path}
                   onClick={(e) => handleNavClick(e, link.path, link.name)}
-                  className={`font-medium transition-all duration-300 ${
-                    location.pathname === link.path
+                  className={`text-sm font-medium tracking-wide transition-all duration-300 ${
+                    location.pathname === link.path && !location.hash
                       ? 'text-gold'
-                      : 'text-white hover:text-gold'
+                      : 'text-gray-200 hover:text-gold'
                   } ${
                     link.name === 'Book Now'
-                      ? 'btn-gold-outline !py-2 !px-6 bg-gold/10'
+                      ? 'border border-gold text-gold px-6 py-2 rounded-full hover:bg-gold hover:text-black transform hover:-translate-y-0.5 transition-all'
                       : ''
                   }`}
                 >
@@ -111,6 +119,7 @@ export const Navbar = () => {
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden text-white hover:text-gold transition-colors p-2"
+              aria-label="Toggle Menu"
             >
               {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
@@ -122,45 +131,43 @@ export const Navbar = () => {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, x: '100%' }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
-            transition={{ type: 'tween', duration: 0.3 }}
-            className="fixed inset-0 z-30 lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 lg:hidden"
           >
-            <div
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
+            <div className="absolute inset-0 bg-black/95 backdrop-blur-xl" />
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'tween', duration: 0.3 }}
-              className="absolute right-0 top-0 bottom-0 w-4/5 max-w-sm glass-strong"
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="absolute right-0 top-0 bottom-0 w-full flex flex-col justify-center items-center space-y-8"
             >
-              <div className="flex flex-col h-full pt-24 px-8 space-y-2">
-                {navLinks.map((link, index) => (
-                  <motion.div
-                    key={link.name}
-                    initial={{ opacity: 0, x: 50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
+              {navLinks.map((link, index) => (
+                <motion.div
+                  key={link.name}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Link
+                    to={link.path}
+                    onClick={(e) => handleNavClick(e, link.path, link.name)}
+                    className={`text-2xl font-medium ${
+                      location.pathname === link.path
+                        ? 'text-gold'
+                        : 'text-white'
+                    } ${
+                      link.name === 'Book Now'
+                        ? 'text-black bg-gold px-10 py-3 rounded-full'
+                        : ''
+                    }`}
                   >
-                    <Link
-                      to={link.path}
-                      onClick={(e) => handleNavClick(e, link.path, link.name)}
-                      className={`block py-4 text-lg font-medium transition-colors ${
-                        location.pathname === link.path
-                          ? 'text-gold'
-                          : 'text-white hover:text-gold'
-                      }`}
-                    >
-                      {link.name}
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
+                    {link.name}
+                  </Link>
+                </motion.div>
+              ))}
             </motion.div>
           </motion.div>
         )}
