@@ -37,7 +37,7 @@ function AppContent() {
   const [appLoading, setAppLoading] = useState(true);
 
   useEffect(() => {
-    // SAKTONG 8 SECONDS
+    // SAKTONG 8 SECONDS MASTER TIMER
     const timer = setTimeout(() => {
       setAppLoading(false);
     }, 8000);
@@ -49,11 +49,11 @@ function AppContent() {
       <AnimatePresence mode="wait">
         {appLoading ? (
           <motion.div
-            key="simple-fade-loader"
+            key="dual-scroll-loader"
             initial={{ opacity: 1 }}
             exit={{ 
               opacity: 0, 
-              transition: { duration: 1.2, ease: "easeInOut" } // CLEAN FADE ONLY
+              transition: { duration: 1.5, ease: "easeInOut" } // SMOOTH FADE
             }}
             className="fixed inset-0 z-[100]"
           >
@@ -61,10 +61,10 @@ function AppContent() {
           </motion.div>
         ) : (
           <motion.div
-            key="home-fade-in"
+            key="main-home-content"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 1.5, ease: "easeOut" }} // CLEAN FADE IN
+            transition={{ duration: 1.5, ease: "easeOut" }} // GENTLE FADE IN
           >
             <Layout>
               <Routes>
