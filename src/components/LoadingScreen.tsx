@@ -2,116 +2,76 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 export const LoadingScreen = () => {
-  // FIX: useMemo ensures the array is stable and won't cause Vercel hydration errors
-  const photos = useMemo(() => {
-    return [
-      '/images/loading/load-1.jpg',
-      '/images/loading/load-2.jpg',
-      '/images/loading/load-3.jpg',
-      '/images/loading/load-4.jpg',
-      '/images/loading/load-5.jpg',
-      '/images/loading/load-6.jpg',
-      '/images/loading/load-7.jpg',
-      '/images/loading/load-8.jpg',
-      '/images/loading/load-9.jpg',
-      '/images/loading/load-10.jpg',
-    ];
-  }, []);
+  const photos = useMemo(() => [
+    '/images/loading/load-1.jpg',
+    '/images/loading/load-2.jpg',
+    '/images/loading/load-3.jpg',
+    '/images/loading/load-4.jpg',
+    '/images/loading/load-5.jpg',
+    '/images/loading/load-6.jpg',
+    '/images/loading/load-7.jpg',
+    '/images/loading/load-8.jpg',
+    '/images/loading/load-9.jpg',
+    '/images/loading/load-10.jpg',
+  ], []);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505] overflow-hidden">
-      
-      {/* --- LAYER 1: STABLE PHOTO MONTAGE (Background) --- */}
+      {/* Background Montage */}
       <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 opacity-20 pointer-events-none">
         {photos.map((src, index) => (
           <motion.div
             key={`bg-photo-${index}`}
             className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-white/5 border border-white/5 shadow-2xl"
             initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: [0, 1, 0], 
-              y: [15, 0, -15],
-              scale: [0.98, 1, 1.02]
-            }}
-            transition={{ 
-              duration: 5,
-              repeat: Infinity, 
-              delay: index * 0.3,
-              ease: "easeInOut" 
-            }}
+            animate={{ opacity: [0, 1, 0], y: [15, 0, -15] }}
+            transition={{ duration: 5, repeat: Infinity, delay: index * 0.2 }}
           >
             <img src={src} alt="" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
           </motion.div>
         ))}
       </div>
 
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
 
-      {/* --- LAYER 2: LOGO & BRAND REVEAL WITH LUXURY GLOW --- */}
+      {/* Luxury Logo Glow Section */}
       <div className="relative z-10 text-center px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
-        >
-          {/* LOGO CONTAINER */}
-          <div className="relative mb-12">
-            <div className="relative h-44 w-44 md:h-60 md:w-60 mx-auto">
-              
-              {/* Soft Ambient Glow Behind Logo */}
-              <motion.div 
-                className="absolute inset-0 rounded-full bg-gold/20 blur-[50px]"
-                animate={{ opacity: [0.2, 0.5, 0.2], scale: [0.9, 1.1, 0.9] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        <div className="relative mb-12">
+          <div className="relative h-44 w-44 md:h-60 md:w-60 mx-auto">
+            {/* Glow Aura */}
+            <motion.div 
+              className="absolute inset-0 rounded-full bg-gold/20 blur-[50px]"
+              animate={{ opacity: [0.2, 0.5, 0.2], scale: [0.9, 1.1, 0.9] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            />
+            {/* Rotating Ring */}
+            <motion.div 
+              className="absolute inset-[-12px] rounded-full border border-gold/10 border-t-gold/60"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+            />
+            {/* Logo Image */}
+            <div className="relative h-full w-full rounded-full overflow-hidden border-2 border-gold/30 p-2 bg-black shadow-[0_0_50px_rgba(212,175,55,0.2)]">
+              <motion.img
+                src="/1775314217196.jpg"
+                alt="Juan Captures"
+                className="h-full w-full object-cover rounded-full"
+                animate={{ filter: ['brightness(1)', 'brightness(1.2) drop-shadow(0 0 10px #D4AF37)', 'brightness(1)'] }}
+                transition={{ duration: 3, repeat: Infinity }}
               />
-
-              {/* Rotating Outer Ring */}
-              <motion.div 
-                className="absolute inset-[-12px] rounded-full border border-gold/10 border-t-gold/60"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-              />
-              
-              {/* The Logo Image Box */}
-              <div className="relative h-full w-full rounded-full overflow-hidden border-2 border-gold/30 p-2 bg-black shadow-[0_0_50px_rgba(212,175,55,0.2)]">
-                <motion.img
-                  src="/1775314217196.jpg"
-                  alt="Juan Captures"
-                  className="h-full w-full object-cover rounded-full"
-                  animate={{ 
-                    filter: [
-                      'brightness(1) contrast(1)', 
-                      'brightness(1.2) contrast(1.1) drop-shadow(0 0 10px rgba(212,175,55,0.4))', 
-                      'brightness(1) contrast(1)'
-                    ] 
-                  }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                />
-              </div>
             </div>
           </div>
+        </div>
 
-          {/* BRAND TEXTS */}
-          <div className="space-y-6">
-            <motion.h1
-              initial={{ opacity: 0, letterSpacing: "0.1em" }}
-              animate={{ opacity: 1, letterSpacing: "0.3em" }}
-              transition={{ delay: 0.5, duration: 1.5 }}
-              className="text-4xl md:text-7xl font-playfair font-black text-white uppercase tracking-tighter"
-            >
-              Juan <span className="italic text-gold/90">Captures</span>
-            </motion.h1>
-            
-            <div className="h-[1px] w-28 bg-gold/40 mx-auto mb-6 shadow-[0_0_10px_#D4AF37]" />
-            
-            <p className="text-gold font-vibes text-2xl md:text-5xl tracking-widest pt-2 opacity-90">
-              Creating Visual Legacies
-            </p>
-          </div>
-        </motion.div>
+        <div className="space-y-6">
+          <h1 className="text-4xl md:text-7xl font-playfair font-black text-white uppercase tracking-[0.3em]">
+            Juan <span className="italic text-gold/90">Captures</span>
+          </h1>
+          <div className="h-[1px] w-28 bg-gold/40 mx-auto shadow-[0_0_10px_#D4AF37]" />
+          <p className="text-gold font-vibes text-2xl md:text-5xl tracking-widest pt-2">Creating Visual Legacies</p>
+        </div>
 
-        {/* GLOWING PROGRESS BAR */}
+        {/* Glowing Progress Bar */}
         <div className="mt-20 flex flex-col items-center gap-4">
            <div className="w-56 h-[1.5px] bg-white/5 relative overflow-hidden rounded-full">
               <motion.div
@@ -121,9 +81,6 @@ export const LoadingScreen = () => {
                 transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
               />
            </div>
-           <span className="text-[9px] font-black uppercase tracking-[0.6em] text-white/30">
-             Optimizing Gallery
-           </span>
         </div>
       </div>
     </div>
