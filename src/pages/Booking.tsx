@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Calendar, Send } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, Send, Loader2, CheckCircle2, AlertCircle, Sparkles, Clock, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Booking as BookingType } from '../types';
 
@@ -98,36 +98,45 @@ export const Booking = () => {
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="min-h-screen pt-32 pb-20">
-      <div className="container-custom px-6">
+    <div className="min-h-screen bg-[#050505] text-white pt-40 pb-24 relative overflow-hidden">
+      {/* Background Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-gold/5 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="container-custom px-6 relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          transition={{ duration: 0.8 }}
+          className="text-center mb-20"
         >
-          <h1 className="text-5xl md:text-6xl font-playfair font-bold text-white mb-4">
-            Book Your Session
+          <div className="flex items-center justify-center gap-3 mb-6 text-gold">
+            <div className="h-[1px] w-8 bg-gold/40" />
+            <span className="text-[10px] font-black uppercase tracking-[0.5em]">Reservation</span>
+            <div className="h-[1px] w-8 bg-gold/40" />
+          </div>
+          <h1 className="text-6xl md:text-7xl font-playfair font-bold tracking-tighter mb-6">
+            Secure Your <span className="italic text-gold">Date</span>
           </h1>
-          <div className="w-20 h-1 bg-gold mx-auto mb-6" />
-          <p className="text-gray-400 max-w-2xl mx-auto">
-            Ready to capture your special moments? Fill out the form below and
-            we'll get back to you within 24 hours.
+          <p className="text-gray-400 max-w-xl mx-auto font-medium leading-relaxed">
+            Let's turn your vision into a visual legacy. Fill out the details below 
+            and our studio will reach out to you within 24 hours.
           </p>
         </motion.div>
 
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="glass-strong p-8 md:p-12 rounded-lg"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="glass-strong p-10 md:p-16 rounded-[3.5rem] border border-white/5 shadow-2xl relative"
           >
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="name" className="block text-white mb-2">
-                    Full Name *
+            <form onSubmit={handleSubmit} className="space-y-10">
+              {/* Row 1: Identity */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="space-y-3">
+                  <label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-gold/80 ml-2">
+                    Client Name
                   </label>
                   <input
                     type="text"
@@ -136,14 +145,14 @@ export const Booking = () => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="John Doe"
+                    className="w-full px-6 py-5 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all font-bold text-sm"
+                    placeholder="e.g. Juan Dela Cruz"
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="email" className="block text-white mb-2">
-                    Email Address *
+                <div className="space-y-3">
+                  <label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-gold/80 ml-2">
+                    Digital Address
                   </label>
                   <input
                     type="email"
@@ -152,16 +161,17 @@ export const Booking = () => {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="john@example.com"
+                    className="w-full px-6 py-5 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all font-bold text-sm"
+                    placeholder="hello@example.com"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="phone" className="block text-white mb-2">
-                    Phone Number
+              {/* Row 2: Event Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="space-y-3">
+                  <label htmlFor="phone" className="text-[10px] font-black uppercase tracking-widest text-gold/80 ml-2">
+                    Contact Number
                   </label>
                   <input
                     type="tel"
@@ -169,39 +179,40 @@ export const Booking = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="+1 (234) 567-890"
+                    className="w-full px-6 py-5 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all font-bold text-sm"
+                    placeholder="+63 000 000 0000"
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="event_type" className="block text-white mb-2">
-                    Event Type *
+                <div className="space-y-3">
+                  <label htmlFor="event_type" className="text-[10px] font-black uppercase tracking-widest text-gold/80 ml-2">
+                    Nature of Event
                   </label>
-                  <select
-                    id="event_type"
-                    name="event_type"
-                    value={formData.event_type}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 glass rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-gold"
-                  >
-                    <option value="" className="bg-dark-100">
-                      Select an event type
-                    </option>
-                    {eventTypes.map((type) => (
-                      <option key={type} value={type} className="bg-dark-100">
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      id="event_type"
+                      name="event_type"
+                      value={formData.event_type}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-6 py-5 bg-white/[0.03] border border-white/10 rounded-2xl text-white focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all appearance-none font-bold text-sm cursor-pointer"
+                    >
+                      <option value="" className="bg-[#0a0a0a]">Select occasion...</option>
+                      {eventTypes.map((type) => (
+                        <option key={type} value={type} className="bg-[#0a0a0a]">{type}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
+                       <Sparkles size={16} />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="event_date" className="block text-white mb-2">
-                  <Calendar className="inline mr-2" size={20} />
-                  Event Date *
+              {/* Row 3: Date */}
+              <div className="space-y-3">
+                <label htmlFor="event_date" className="text-[10px] font-black uppercase tracking-widest text-gold/80 ml-2 flex items-center gap-2">
+                  <Calendar size={14} /> Preferred Session Date
                 </label>
                 <input
                   type="date"
@@ -211,13 +222,14 @@ export const Booking = () => {
                   onChange={handleChange}
                   min={today}
                   required
-                  className="w-full px-4 py-3 glass rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-6 py-5 bg-white/[0.03] border border-white/10 rounded-2xl text-white focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all font-bold text-sm cursor-pointer invert-calendar-icon"
                 />
               </div>
 
-              <div>
-                <label htmlFor="message" className="block text-white mb-2">
-                  Additional Details *
+              {/* Row 4: Message */}
+              <div className="space-y-3">
+                <label htmlFor="message" className="text-[10px] font-black uppercase tracking-widest text-gold/80 ml-2">
+                  The Vision (Details & Requirements)
                 </label>
                 <textarea
                   id="message"
@@ -225,85 +237,78 @@ export const Booking = () => {
                   value={formData.message}
                   onChange={handleChange}
                   required
-                  rows={5}
-                  className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold resize-none"
-                  placeholder="Tell us more about your event, your vision, any special requirements..."
+                  rows={4}
+                  className="w-full px-6 py-5 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all font-medium text-sm resize-none leading-relaxed"
+                  placeholder="Tell us more about your event, the vibe, and any specific moments you want us to highlight..."
                 />
               </div>
 
-              {submitStatus === 'success' && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-green-500/20 border border-green-500 text-green-400 px-4 py-3 rounded-lg"
-                >
-                  <strong>Success!</strong> Your booking request has been
-                  submitted. We'll contact you within 24 hours to confirm the
-                  details.
-                </motion.div>
-              )}
+              <AnimatePresence>
+                {submitStatus === 'success' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="bg-gold/10 border border-gold/30 text-gold px-6 py-4 rounded-2xl flex items-center gap-3"
+                  >
+                    <CheckCircle2 size={20} />
+                    <span className="text-sm font-bold uppercase tracking-widest italic">Success! Your request is in the vault.</span>
+                  </motion.div>
+                )}
 
-              {submitStatus === 'error' && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg"
-                >
-                  <strong>Error!</strong> Something went wrong. Please try again
-                  or contact us directly.
-                </motion.div>
-              )}
+                {submitStatus === 'error' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="bg-red-500/10 border border-red-500/30 text-red-400 px-6 py-4 rounded-2xl flex items-center gap-3"
+                  >
+                    <AlertCircle size={20} />
+                    <span className="text-sm font-bold uppercase tracking-widest italic">Action failed. Please verify your details.</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full btn-gold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-6 bg-white text-black rounded-3xl font-black uppercase text-[11px] tracking-[0.4em] shadow-2xl transition-all duration-500 hover:bg-gold active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-dark" />
-                    <span>Submitting...</span>
-                  </>
+                  <div className="flex items-center justify-center gap-3">
+                    <Loader2 className="animate-spin" size={18} />
+                    <span>Processing...</span>
+                  </div>
                 ) : (
-                  <>
-                    <Send size={20} />
-                    <span>Submit Booking Request</span>
-                  </>
+                  <div className="flex items-center justify-center gap-3">
+                    <Send size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                    <span>Submit Reservation</span>
+                  </div>
                 )}
               </button>
-
-              <p className="text-gray-400 text-sm text-center">
-                By submitting this form, you agree to be contacted regarding your
-                booking request.
-              </p>
             </form>
           </motion.div>
 
+          {/* Bottom Info Cards */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6"
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6"
           >
             {[
-              {
-                title: 'Quick Response',
-                description: 'We respond to all inquiries within 24 hours',
-              },
-              {
-                title: 'Flexible Packages',
-                description: 'Customizable options to fit your budget and needs',
-              },
-              {
-                title: 'Professional Service',
-                description: 'Experience and quality you can trust',
-              },
+              { icon: Clock, title: 'Swift Response', desc: 'Confirmations sent within 24 business hours.' },
+              { icon: Sparkles, title: 'Bespoke Art', desc: 'Customizable packages for your unique vision.' },
+              { icon: ShieldCheck, title: 'Secure Date', desc: 'Professional handling from booking to delivery.' },
             ].map((item) => (
-              <div key={item.title} className="glass p-6 rounded-lg text-center">
-                <h3 className="text-lg font-playfair font-semibold text-white mb-2">
+              <div key={item.title} className="glass-strong p-8 rounded-[2rem] border border-white/5 text-center group hover:border-gold/20 transition-all">
+                <div className="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center text-gold mx-auto mb-4 group-hover:scale-110 transition-transform">
+                   <item.icon size={18} />
+                </div>
+                <h3 className="text-sm font-playfair font-bold text-white mb-2 uppercase tracking-widest">
                   {item.title}
                 </h3>
-                <p className="text-gray-400 text-sm">{item.description}</p>
+                <p className="text-gray-500 text-xs font-medium leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </motion.div>
