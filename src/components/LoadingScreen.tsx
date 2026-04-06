@@ -13,7 +13,7 @@ export const LoadingScreen = () => {
   useEffect(() => {
     // Saktong 8 seconds (8000ms)
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      setIsLoading(true);
     }, 8000);
 
     return () => clearTimeout(timer);
