@@ -4,14 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 export const LoadingScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Gamit ang 10 photos mula sa /public/images/loading/
+  // Gamit ang 10 photos mula sa /public/images/loading/ para sa montage background
   const totalPhotos = 10; 
   const photos = Array.from({ length: totalPhotos }, (_, i) => `/images/loading/load-${i + 1}.jpg`);
 
   useEffect(() => {
     // GINAWANG 8 SECONDS (8000ms)
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      setIsLoading(true);
     }, 8000);
 
     return () => clearTimeout(timer);
@@ -31,8 +31,8 @@ export const LoadingScreen = () => {
           }}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505] overflow-hidden"
         >
-          {/* --- LAYER 1: ACTUAL PHOTOSHOOT MONTAGE GRID --- */}
-          <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 opacity-30 pointer-events-none">
+          {/* --- LAYER 1: ACTUAL PHOTOSHOOT MONTAGE GRID (Background) --- */}
+          <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 opacity-25 pointer-events-none">
             {photos.map((src, index) => (
               <motion.div
                 key={index}
@@ -62,34 +62,43 @@ export const LoadingScreen = () => {
             ))}
           </div>
 
-          {/* Cinematic Overlay - Mas madilim para litaw ang text */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" />
+          {/* Cinematic Overlay - Mas madilim para litaw ang text at logo */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
 
-          {/* --- LAYER 2: BRAND REVEAL --- */}
+          {/* --- LAYER 2: BRAND REVEAL (Foreground) --- */}
           <div className="relative z-10 text-center px-6">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8, duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              {/* Animated Lens Icon */}
-              <div className="relative w-24 h-24 mx-auto mb-10">
-                <motion.div 
-                  className="absolute inset-0 rounded-full border-2 border-gold/10"
-                  animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.6, 0.3] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                />
-                <motion.div 
-                  className="absolute inset-0 rounded-full border-t-2 border-gold"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-                />
-                <div className="absolute inset-5 rounded-full border border-gold/30 flex items-center justify-center">
+              
+              {/* --- BINAUALIK NA MAIN LOGO IMAGE --- */}
+              <div className="relative mb-12">
+                <div className="relative h-48 w-48 md:h-64 md:w-64 mx-auto">
+                  {/* Rotating Outer Ring (Gold) */}
                   <motion.div 
-                    className="w-2 h-2 bg-gold rounded-full shadow-[0_0_15px_#D4AF37]"
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 2, repeat: Infinity }}
+                    className="absolute inset-[-12px] rounded-full border border-gold/10 border-t-gold/60"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
                   />
+                  
+                  {/* Main Logo Image Container */}
+                  <div className="h-full w-full rounded-full overflow-hidden border-2 border-gold/30 p-2 shadow-[0_0_60px_rgba(212,175,55,0.15)] bg-black">
+                    <motion.img
+                      src="/1775314217196.jpg" // IYONG AKTWAL NA LOGO
+                      alt="Juan Captures Logo"
+                      className="h-full w-full object-cover rounded-full"
+                      animate={{
+                        filter: [
+                          'contrast(1) brightness(1)',
+                          'contrast(1.1) brightness(1.2)',
+                          'contrast(1) brightness(1)',
+                        ],
+                      }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                  </div>
                 </div>
               </div>
 
