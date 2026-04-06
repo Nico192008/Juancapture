@@ -130,7 +130,7 @@ export const Booking = () => {
                   />
                 </div>
                 <div className="space-y-2.5">
-                  <label className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gold/80 ml-2">Digital Address</label>
+                  <label className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gold/80 ml-2">Email Address</label>
                   <input
                     type="email" name="email" value={formData.email} onChange={handleChange} required
                     className="w-full px-5 md:px-6 py-4 md:py-5 bg-white/[0.03] border border-white/10 rounded-xl md:rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all font-bold text-sm"
