@@ -197,7 +197,7 @@ export const Navbar = () => {
                     className="flex items-center justify-center gap-3 w-full py-4 bg-yellow-500 text-black rounded-xl font-bold uppercase text-[11px] tracking-widest shadow-lg active:scale-[0.98] transition-transform"
                   >
                     <Sparkles size={16} />
-                    Reserve Date
+                    Book Now
                   </Link>
                   
                   <a
