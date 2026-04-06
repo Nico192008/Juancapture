@@ -179,7 +179,7 @@ export const Booking = () => {
               <div className="space-y-2.5">
                 <label className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gold/80 ml-2">The Vision</label>
                 <textarea
-                  name="message" value={formData.message} onChange={handleChange} required rows={4}
+                  name="message" value={formData.message} onChange={handleChange} rows={4}
                   className="w-full px-5 md:px-6 py-4 md:py-5 bg-white/[0.03] border border-white/10 rounded-xl md:rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-gold/50 transition-all font-medium text-sm resize-none"
                   placeholder="Tell us about the vibe and specific moments you want us to highlight..."
                 />
