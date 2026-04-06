@@ -17,7 +17,9 @@ import {
   Play,
   Layers,
   Edit2,
-  Check
+  Check,
+  Settings,
+  ArrowUpRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -31,19 +33,15 @@ export const AdminDashboard = () => {
   const [albumsList, setAlbumsList] = useState<{id: string, name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Create Modal States
+  // Modal & Form States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [postType, setPostType] = useState<'image' | 'video'>('image');
   const [submitting, setSubmitting] = useState(false);
-  
-  // Album View Modal States (Para sa Edit/Delete Photos)
   const [selectedAlbum, setSelectedAlbum] = useState<{id: string, name: string} | null>(null);
   const [albumPhotos, setAlbumPhotos] = useState<any[]>([]);
   const [fetchingPhotos, setFetchingPhotos] = useState(false);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [newCaption, setNewCaption] = useState('');
-
-  // Form States
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState('');
@@ -68,11 +66,14 @@ export const AdminDashboard = () => {
         supabase.from('bookings').select('id', { count: 'exact', head: true }),
       ]);
       setAlbumsList(albums.data || []);
-      setStats({ albums: albums.data?.length || 0, videos: vids.count || 0, bookings: bookings.count || 0 });
+      setStats({ 
+        albums: albums.data?.length || 0, 
+        videos: vids.count || 0, 
+        bookings: bookings.count || 0 
+      });
     } finally { setLoading(false); }
   };
 
-  // --- Photo Management Logic ---
   const openAlbum = async (album: {id: string, name: string}) => {
     setSelectedAlbum(album);
     setFetchingPhotos(true);
@@ -82,47 +83,39 @@ export const AdminDashboard = () => {
   };
 
   const deletePhoto = async (id: string, url: string) => {
-    if(!confirm("Sigurado ka bang buburahin ito?")) return;
+    if(!confirm("Are you sure you want to delete this memory?")) return;
     try {
-      // 1. Delete sa Storage
       const path = url.split('/').pop();
       await supabase.storage.from('portfolio').remove([`images/${path}`]);
-      // 2. Delete sa Database
       await supabase.from('images').delete().eq('id', id);
       setAlbumPhotos(prev => prev.filter(p => p.id !== id));
-    } catch (err) { alert("Error deleting photo"); }
-  };
-
-  const updateCaption = async (id: string) => {
-    await supabase.from('images').update({ caption: newCaption }).eq('id', id);
-    setAlbumPhotos(prev => prev.map(p => p.id === id ? { ...p, caption: newCaption } : p));
-    setEditingPhotoId(null);
-  };
-
-  // --- Create Post Logic ---
-  const uploadToBucket = async (file: File, folder: string) => {
-    const fileName = `${Math.random()}.${file.name.split('.').pop()}`;
-    const filePath = `${folder}/${fileName}`;
-    const { error } = await supabase.storage.from('portfolio').upload(filePath, file);
-    if (error) throw error;
-    const { data: { publicUrl } } = supabase.storage.from('portfolio').getPublicUrl(filePath);
-    return publicUrl;
+    } catch (err) { alert("Delete failed"); }
   };
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile) return alert("Pumili ng file.");
+    if (!selectedFile) return;
     setSubmitting(true);
     try {
+      const uploadToBucket = async (file: File, folder: string) => {
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        const filePath = `${folder}/${fileName}`;
+        const { error } = await supabase.storage.from('portfolio').upload(filePath, file);
+        if (error) throw error;
+        return supabase.storage.from('portfolio').getPublicUrl(filePath).data.publicUrl;
+      };
+
       if (postType === 'image') {
         const url = await uploadToBucket(selectedFile, 'images');
         await supabase.from('images').insert([{ album_id: selectedAlbumId, image_url: url, caption: '' }]);
       } else {
         if (!thumbnailFile) throw new Error("Thumbnail required");
-        const [vUrl, tUrl] = await Promise.all([uploadToBucket(selectedFile, 'videos'), uploadToBucket(thumbnailFile, 'thumbnails')]);
+        const [vUrl, tUrl] = await Promise.all([
+          uploadToBucket(selectedFile, 'videos'), 
+          uploadToBucket(thumbnailFile, 'thumbnails')
+        ]);
         await supabase.from('videos').insert([{ title, video_url: vUrl, thumbnail_url: tUrl }]);
       }
-      alert("Published!");
       resetForm();
       fetchDashboardData();
     } catch (err: any) { alert(err.message); } finally { setSubmitting(false); }
@@ -136,94 +129,147 @@ export const AdminDashboard = () => {
     setTitle('');
   };
 
-  if (loading || authLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-gold w-10 h-10" /></div>;
+  if (loading || authLoading) return (
+    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-4">
+      <Loader2 className="animate-spin text-gold w-8 h-8" />
+      <p className="text-[10px] uppercase tracking-[0.3em] text-gold/50 font-bold">Initializing Studio</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen pt-24 pb-20 bg-[#050505] text-white">
-      <div className="container-custom px-6">
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-gold/30">
+      {/* BACKGROUND ORBS */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-white/5 rounded-full blur-[100px]" />
+      </div>
+
+      <div className="relative z-10 container-custom pt-32 pb-20 px-6">
         
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
-          <div>
-            <h1 className="text-5xl font-playfair font-bold tracking-tight">Dashboard</h1>
-            <div className="flex items-center gap-2 text-gray-500 mt-2 font-mono text-xs uppercase tracking-widest">
-              <Clock size={12} className="text-gold"/>
-              <span>{currentTime.toLocaleTimeString()} | {currentTime.toLocaleDateString()}</span>
+        {/* TOP NAVIGATION BAR-LIKE HEADER */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-8">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <h1 className="text-6xl font-playfair font-bold tracking-tighter mb-2">
+              Studio <span className="text-gold italic">Control</span>
+            </h1>
+            <div className="flex items-center gap-3 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full w-fit">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-gold"></span>
+              </span>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400">
+                {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} — System Active
+              </span>
             </div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={() => setShowCreateModal(true)} className="bg-gold text-black px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-white transition-all shadow-lg shadow-gold/10">
-              <Plus size={18} /> Create Post
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-4">
+            <button onClick={() => setShowCreateModal(true)} className="group relative overflow-hidden bg-white text-black px-8 py-4 rounded-2xl font-bold transition-all hover:pr-12">
+              <span className="relative z-10 flex items-center gap-2 uppercase text-xs tracking-widest">
+                <Plus size={16} strokeWidth={3} /> New Masterpiece
+              </span>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all">
+                <ArrowUpRight size={18} />
+              </div>
             </button>
-            <button onClick={() => signOut()} className="glass-strong p-3 rounded-xl text-gray-500 hover:text-white border border-white/5"><LogOut size={20} /></button>
-          </div>
+            <button onClick={() => signOut()} className="p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-red-500/10 hover:border-red-500/20 text-gray-400 hover:text-red-500 transition-all">
+              <LogOut size={20} />
+            </button>
+          </motion.div>
+        </header>
+
+        {/* BENTO GRID STATS */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
+          <Link to="/admin/bookings" className="md:col-span-2 group glass-strong p-8 rounded-[2.5rem] border border-white/5 hover:border-gold/30 transition-all relative overflow-hidden">
+            <div className="relative z-10">
+              <div className="bg-white/5 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 text-gold group-hover:scale-110 transition-transform duration-500">
+                <Calendar size={28} />
+              </div>
+              <h3 className="text-gray-500 text-xs font-bold uppercase tracking-[0.2em] mb-1">Upcoming Schedule</h3>
+              <div className="text-6xl font-bold tracking-tighter">{stats.bookings}</div>
+              <p className="text-gray-600 text-sm mt-4 font-medium group-hover:text-gray-400 transition-colors">Manage all photography sessions & clients →</p>
+            </div>
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Calendar size={120} />
+            </div>
+          </Link>
+
+          <Link to="/admin/albums" className="group glass-strong p-8 rounded-[2.5rem] border border-white/5 hover:border-white/20 transition-all">
+            <div className="bg-white/5 w-12 h-12 rounded-xl flex items-center justify-center mb-6 text-blue-400">
+              <ImageIcon size={22} />
+            </div>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Albums</h3>
+            <div className="text-4xl font-bold tracking-tighter">{stats.albums}</div>
+          </Link>
+
+          <Link to="/admin/videos" className="group glass-strong p-8 rounded-[2.5rem] border border-white/5 hover:border-white/20 transition-all">
+            <div className="bg-white/5 w-12 h-12 rounded-xl flex items-center justify-center mb-6 text-purple-400">
+              <Video size={22} />
+            </div>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Cinematics</h3>
+            <div className="text-4xl font-bold tracking-tighter">{stats.videos}</div>
+          </Link>
         </div>
 
-        {/* STATS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {[
-            { label: 'Bookings', count: stats.bookings, icon: Calendar, color: 'text-blue-400', link: '/admin/bookings' },
-            { label: 'Albums', count: stats.albums, icon: ImageIcon, color: 'text-gold', link: '/admin/albums' },
-            { label: 'Videos', count: stats.videos, icon: Video, color: 'text-purple-400', link: '/admin/videos' },
-          ].map((stat) => (
-            <Link key={stat.label} to={stat.link} className="glass-strong p-8 rounded-3xl border border-white/5 hover:border-white/10 transition-all group">
-              <div className={`${stat.color} mb-4 bg-white/5 w-12 h-12 flex items-center justify-center rounded-xl group-hover:scale-110 transition-transform`}><stat.icon size={22}/></div>
-              <div className="text-4xl font-bold tracking-tighter">{stat.count}</div>
-              <div className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">{stat.label}</div>
-            </Link>
-          ))}
-        </div>
-
-        {/* RECENT ALBUMS SECTION */}
-        <div className="glass-strong p-8 rounded-[2.5rem] border border-white/5">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-bold flex items-center gap-3"><Layers className="text-gold" size={20}/> Recent Albums</h3>
+        {/* RECENT WORK SECTION */}
+        <section className="glass-strong p-10 rounded-[3rem] border border-white/5">
+          <div className="flex justify-between items-center mb-10">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center">
+                <Layers className="text-gold" size={20} />
+              </div>
+              <h3 className="text-2xl font-bold tracking-tight">Recent Archives</h3>
+            </div>
+            <Link to="/admin/albums" className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-gold transition-colors">View All Projects</Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {albumsList.map(album => (
-              <button key={album.id} onClick={() => openAlbum(album)} className="flex items-center justify-between p-5 bg-white/5 border border-white/5 rounded-2xl group hover:bg-white/10 transition-all text-left">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-gold/10 rounded-xl flex items-center justify-center text-gold"><ImageIcon size={18}/></div>
-                  <span className="font-semibold">{album.name}</span>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {albumsList.slice(0, 8).map((album, idx) => (
+              <motion.button 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                key={album.id} 
+                onClick={() => openAlbum(album)} 
+                className="flex items-center justify-between p-6 bg-white/[0.03] border border-white/5 rounded-2xl group hover:bg-white/[0.08] hover:border-gold/20 transition-all text-left"
+              >
+                <div className="flex items-center gap-4 overflow-hidden">
+                  <div className="shrink-0 w-10 h-10 bg-black rounded-lg border border-white/10 flex items-center justify-center text-gold group-hover:scale-110 transition-transform">
+                    <ImageIcon size={18} />
+                  </div>
+                  <span className="font-semibold truncate">{album.name}</span>
                 </div>
-                <ChevronRight size={16} className="text-gray-600 group-hover:text-gold" />
-              </button>
+                <ChevronRight size={16} className="text-gray-600 group-hover:text-gold transition-colors" />
+              </motion.button>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* ALBUM PHOTO VIEWER MODAL */}
+        {/* MODALS - Cleaned up with better spacing and contrast */}
         <AnimatePresence>
           {selectedAlbum && (
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedAlbum(null)} className="absolute inset-0 bg-black/95 backdrop-blur-md" />
-              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="relative glass-strong w-full max-w-5xl h-[80vh] flex flex-col p-8 rounded-[3rem] border border-white/10 overflow-hidden">
-                <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-bold tracking-tight text-gold uppercase">{selectedAlbum.name} <span className="text-gray-500 text-sm ml-2">({albumPhotos.length} photos)</span></h2>
-                  <button onClick={() => setSelectedAlbum(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X/></button>
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-2xl bg-black/80">
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative glass-strong w-full max-w-6xl h-[85vh] flex flex-col p-10 rounded-[3.5rem] border border-white/10 shadow-2xl">
+                <div className="flex justify-between items-center mb-10">
+                  <div>
+                    <h2 className="text-3xl font-bold tracking-tighter text-white uppercase italic">{selectedAlbum.name}</h2>
+                    <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-bold mt-1">Found {albumPhotos.length} Masterpieces in this collection</p>
+                  </div>
+                  <button onClick={() => setSelectedAlbum(null)} className="p-4 bg-white/5 hover:bg-white/10 rounded-full transition-all group">
+                    <X className="group-hover:rotate-90 transition-transform" />
+                  </button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                  {fetchingPhotos ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gold" size={40}/></div> : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
+                  {fetchingPhotos ? <div className="flex flex-col items-center justify-center py-40 gap-4"><Loader2 className="animate-spin text-gold" /><p className="text-[10px] font-bold uppercase tracking-widest text-gray-600">Retrieving Files...</p></div> : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                       {albumPhotos.map(photo => (
-                        <div key={photo.id} className="group relative bg-white/5 rounded-2xl overflow-hidden border border-white/5">
-                          <img src={photo.image_url} alt="" className="w-full h-40 object-cover" />
-                          <div className="p-3">
-                            {editingPhotoId === photo.id ? (
-                              <div className="flex gap-2">
-                                <input autoFocus className="bg-black/50 border border-gold/50 rounded px-2 py-1 text-xs w-full outline-none" value={newCaption} onChange={(e) => setNewCaption(e.target.value)} />
-                                <button onClick={() => updateCaption(photo.id)} className="text-emerald-400"><Check size={16}/></button>
-                              </div>
-                            ) : (
-                              <div className="flex justify-between items-center">
-                                <p className="text-[10px] text-gray-400 truncate pr-2">{photo.caption || "No caption"}</p>
-                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => { setEditingPhotoId(photo.id); setNewCaption(photo.caption || ''); }} className="text-gold"><Edit2 size={14}/></button>
-                                  <button onClick={() => deletePhoto(photo.id, photo.image_url)} className="text-red-500"><Trash2 size={14}/></button>
-                                </div>
-                              </div>
-                            )}
+                        <div key={photo.id} className="group relative bg-white/[0.02] rounded-[1.5rem] overflow-hidden border border-white/5 aspect-square">
+                          <img src={photo.image_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => deletePhoto(photo.id, photo.image_url)} className="p-2 bg-red-500 text-white rounded-lg hover:scale-110 transition-transform"><Trash2 size={16}/></button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -235,60 +281,72 @@ export const AdminDashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* CREATE POST MODAL */}
+        {/* CREATE POST MODAL - Refined */}
         <AnimatePresence>
           {showCreateModal && (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={resetForm} className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
-              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="relative glass-strong w-full max-w-xl p-10 rounded-[3rem] border border-white/10">
-                <h2 className="text-2xl font-bold mb-8 text-center uppercase tracking-tighter text-gold">Create Portfolio Post</h2>
-                <form onSubmit={handleCreatePost} className="space-y-6">
-                  <div className="flex p-1 bg-white/5 rounded-2xl">
-                    <button type="button" onClick={() => setPostType('image')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${postType === 'image' ? 'bg-gold text-black' : 'text-gray-500'}`}>Photo</button>
-                    <button type="button" onClick={() => setPostType('video')} className={`flex-1 py-3 rounded-xl font-bold transition-all ${postType === 'video' ? 'bg-gold text-black' : 'text-gray-500'}`}>Video</button>
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+              <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="relative glass-strong w-full max-w-xl p-12 rounded-[3.5rem] border border-white/10 shadow-2xl">
+                <button onClick={resetForm} className="absolute top-8 right-8 text-gray-500 hover:text-white"><X /></button>
+                <h2 className="text-3xl font-playfair font-bold mb-10 text-center">New Content</h2>
+                
+                <form onSubmit={handleCreatePost} className="space-y-8">
+                  <div className="flex p-1.5 bg-black/40 border border-white/5 rounded-2xl">
+                    {['image', 'video'].map((type) => (
+                      <button key={type} type="button" onClick={() => setPostType(type as any)} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${postType === type ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>{type}</button>
+                    ))}
                   </div>
 
-                  {postType === 'image' ? (
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase ml-2 mb-2 block tracking-widest">Select Album</label>
-                      <select required className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-gold"
-                        value={selectedAlbumId} onChange={(e) => setSelectedAlbumId(e.target.value)}>
-                        <option value="" className="bg-black">-- Choose Album --</option>
-                        {albumsList.map(a => <option key={a.id} value={a.id} className="bg-black">{a.name}</option>)}
-                      </select>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase ml-2 mb-2 block tracking-widest">Video Title</label>
-                      <input required type="text" placeholder="Title..." className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-gold"
-                        value={title} onChange={(e) => setTitle(e.target.value)} />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="border-2 border-dashed border-white/10 rounded-2xl p-6 text-center relative hover:border-gold transition-all">
-                      <input required type="file" accept={postType === 'image' ? "image/*" : "video/*"} className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                      <Upload className="mx-auto text-gold/30 mb-2" size={24} />
-                      <p className="text-[10px] text-gray-500 truncate">{selectedFile ? selectedFile.name : `Select ${postType}`}</p>
-                    </div>
-                    {postType === 'video' && (
-                      <div className="border-2 border-dashed border-white/10 rounded-2xl p-6 text-center relative hover:border-gold transition-all">
-                        <input required type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
-                        <ImageIcon className="mx-auto text-purple-400/30 mb-2" size={24} />
-                        <p className="text-[10px] text-gray-500 truncate">{thumbnailFile ? thumbnailFile.name : 'Upload Thumbnail'}</p>
+                  <div className="space-y-4">
+                    {postType === 'image' ? (
+                      <div className="group">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase ml-4 mb-2 block tracking-widest group-focus-within:text-gold transition-colors">Target Album</label>
+                        <select required className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:border-gold transition-all appearance-none cursor-pointer"
+                          value={selectedAlbumId} onChange={(e) => setSelectedAlbumId(e.target.value)}>
+                          <option value="" className="bg-[#050505]">Select Destination</option>
+                          {albumsList.map(a => <option key={a.id} value={a.id} className="bg-[#050505]">{a.name}</option>)}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="group">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase ml-4 mb-2 block tracking-widest group-focus-within:text-gold transition-colors">Production Title</label>
+                        <input required type="text" placeholder="Cinematic Title..." className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:border-gold transition-all"
+                          value={title} onChange={(e) => setTitle(e.target.value)} />
                       </div>
                     )}
+
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="border-2 border-dashed border-white/10 rounded-3xl p-10 text-center relative hover:border-gold/50 transition-all bg-white/[0.02] group/upload">
+                        <input required type="file" accept={postType === 'image' ? "image/*" : "video/*"} className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                        <Upload className="mx-auto text-gold mb-4 group-hover/upload:scale-110 transition-transform" size={32} />
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          {selectedFile ? selectedFile.name : `Drop ${postType} file`}
+                        </p>
+                      </div>
+                      
+                      {postType === 'video' && (
+                        <div className="border-2 border-dashed border-white/10 rounded-3xl p-8 text-center relative hover:border-purple-500/50 transition-all bg-white/[0.02]">
+                          <input required type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
+                          <div className="flex items-center justify-center gap-3">
+                            <ImageIcon className="text-purple-400" size={20} />
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                              {thumbnailFile ? thumbnailFile.name : 'Choose Cover Image'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <button disabled={submitting} type="submit" className="w-full bg-gold text-black py-4 rounded-2xl font-bold flex justify-center items-center gap-2 shadow-xl shadow-gold/20 active:scale-95 transition-all">
-                    {submitting ? <Loader2 className="animate-spin" /> : 'Publish to Portfolio'}
+                  <button disabled={submitting} type="submit" className="w-full bg-gold text-black py-5 rounded-2xl font-bold flex justify-center items-center gap-3 shadow-2xl shadow-gold/20 active:scale-95 transition-all disabled:opacity-50 group">
+                    {submitting ? <Loader2 className="animate-spin" /> : (
+                      <span className="flex items-center gap-2 uppercase text-xs tracking-widest">Publish to Portfolio <ArrowUpRight size={16}/></span>
+                    )}
                   </button>
                 </form>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
-
       </div>
     </div>
   );
