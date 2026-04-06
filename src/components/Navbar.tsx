@@ -1,207 +1,340 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Sparkles, Instagram, Facebook, Phone } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Image as ImageIcon,
+  Video,
+  Calendar,
+  LogOut,
+  Plus,
+  X,
+  Upload,
+  Loader2,
+  Layers,
+  ChevronRight,
+  Trash2,
+  ArrowUpRight,
+  FileImage
+} from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useAuthContext } from '../../contexts/AuthContext';
 
-export const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const location = useLocation();
+export const AdminDashboard = () => {
+  const { user, isAdmin, signOut, loading: authLoading } = useAuthContext();
+  const navigate = useNavigate();
+  
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [stats, setStats] = useState({ albums: 0, videos: 0, bookings: 0 });
+  const [albumsList, setAlbumsList] = useState<{id: string, name: string}[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Modal & Form States
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [postType, setPostType] = useState<'image' | 'video'>('image');
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedAlbum, setSelectedAlbum] = useState<{id: string, name: string} | null>(null);
+  const [albumPhotos, setAlbumPhotos] = useState<any[]>([]);
+  const [fetchingPhotos, setFetchingPhotos] = useState(false);
+  
+  // MULTIPLE FILES STATE
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [selectedAlbumId, setSelectedAlbumId] = useState('');
+  const [title, setTitle] = useState('');
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    if (authLoading) return;
+    if (!user || !isAdmin) {
+      navigate('/admin/login');
+      return;
+    }
+    fetchDashboardData();
+    return () => clearInterval(timer);
+  }, [user, isAdmin, navigate, authLoading]);
 
-  // Isara ang menu kapag nag-change ng route
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-    // Siguraduhing bumabalik ang scroll ng body
-    document.body.style.overflow = 'auto';
-  }, [location]);
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-    // I-disable ang scroll sa likod kapag open ang menu
-    document.body.style.overflow = !isMobileMenuOpen ? 'hidden' : 'auto';
+  const fetchDashboardData = async () => {
+    try {
+      const [albums, vids, bookings] = await Promise.all([
+        supabase.from('albums').select('id, name').order('created_at', { ascending: false }),
+        supabase.from('videos').select('id', { count: 'exact', head: true }),
+        supabase.from('bookings').select('id', { count: 'exact', head: true }),
+      ]);
+      setAlbumsList(albums.data || []);
+      setStats({ 
+        albums: albums.data?.length || 0, 
+        videos: vids.count || 0, 
+        bookings: bookings.count || 0 
+      });
+    } catch (err) {
+      console.error("Fetch Error:", err);
+    } finally { setLoading(false); }
   };
 
-  const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Gallery', path: '/gallery' },
-    { name: 'Videos', path: '/videos' },
-    { name: 'About', path: '/about' },
-    { name: 'Contact', path: '/contact' },
-  ];
+  const openAlbumPreview = async (album: {id: string, name: string}) => {
+    setSelectedAlbum(album);
+    setFetchingPhotos(true);
+    const { data } = await supabase.from('images').select('*').eq('album_id', album.id);
+    setAlbumPhotos(data || []);
+    setFetchingPhotos(false);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      if (postType === 'video') {
+        setSelectedFiles([filesArray[0]]); 
+      } else {
+        setSelectedFiles(prev => [...prev, ...filesArray]);
+      }
+    }
+  };
+
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedFiles.length === 0) return;
+    setSubmitting(true);
+
+    try {
+      const uploadFile = async (file: File, folder: string) => {
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        const filePath = `${folder}/${fileName}`;
+        const { error } = await supabase.storage.from('portfolio').upload(filePath, file);
+        if (error) throw error;
+        const { data } = supabase.storage.from('portfolio').getPublicUrl(filePath);
+        return data.publicUrl;
+      };
+
+      if (postType === 'image') {
+        const uploadPromises = selectedFiles.map(async (file) => {
+          const url = await uploadFile(file, 'images');
+          return { album_id: selectedAlbumId, image_url: url, caption: '' };
+        });
+        const results = await Promise.all(uploadPromises);
+        const { error } = await supabase.from('images').insert(results);
+        if (error) throw error;
+      } else {
+        if (!thumbnailFile) throw new Error("Thumbnail required for video");
+        const [vUrl, tUrl] = await Promise.all([
+          uploadFile(selectedFiles[0], 'videos'), 
+          uploadFile(thumbnailFile, 'thumbnails')
+        ]);
+        const { error } = await supabase.from('videos').insert([{ title, video_url: vUrl, thumbnail_url: tUrl }]);
+        if (error) throw error;
+      }
+      
+      resetForm();
+      fetchDashboardData();
+      alert("Successfully Published!");
+    } catch (err: any) { 
+      alert(err.message); 
+    } finally { 
+      setSubmitting(false); 
+    }
+  };
+
+  const resetForm = () => {
+    setShowCreateModal(false);
+    setSelectedFiles([]);
+    setThumbnailFile(null);
+    setSelectedAlbumId('');
+    setTitle('');
+  };
+
+  if (loading || authLoading) return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+      <Loader2 className="animate-spin text-amber-500 mb-4" size={40} />
+      <p className="text-white font-mono text-xs tracking-widest uppercase">System Loading...</p>
+    </div>
+  );
 
   return (
-    <>
-      <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.8, ease: "circOut" }}
-        className={`fixed top-0 left-0 right-0 z-[60] transition-all duration-500 ${
-          isScrolled
-            ? 'py-3 md:py-4 bg-black/80 backdrop-blur-xl border-b border-white/5 shadow-2xl'
-            : 'py-6 md:py-8 bg-transparent'
-        }`}
-      >
-        <div className="container mx-auto px-6">
-          <div className="flex items-center justify-between">
-            {/* --- LOGO SECTION --- */}
-            <Link to="/" className="group flex items-center gap-3 md:gap-4">
-              <div className="relative h-12 w-12 md:h-14 md:w-14 p-[2px] rounded-full bg-gradient-to-tr from-gold/40 to-transparent group-hover:from-gold transition-all duration-700">
-                <div className="h-full w-full rounded-full overflow-hidden border border-white/10 bg-black">
-                  <motion.img
-                    src="/1775314217196.jpg"
-                    alt="Juan Captures Logo"
-                    className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-125"
-                  />
-                </div>
-                <div className="absolute inset-0 rounded-full group-hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl md:text-2xl font-playfair font-black text-white tracking-tighter leading-none group-hover:text-gold transition-colors">
-                  Juan<span className="italic text-gold/90">Captures</span>
-                </span>
-                <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.4em] text-gold/60 mt-1">
-                  Est. 2018
-                </span>
-              </div>
-            </Link>
+    <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden selection:bg-amber-500/30">
+      
+      <div className="relative z-10 max-w-7xl mx-auto pt-10 md:pt-20 px-6 pb-20">
+        
+        {/* HEADER SECTION */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+          <div>
+            <h1 className="text-4xl md:text-6xl font-serif font-bold tracking-tighter mb-2">
+              Studio <span className="text-amber-500 italic">Control</span>
+            </h1>
+            <p className="text-gray-500 font-mono text-[10px] uppercase tracking-widest">
+              {currentTime.toLocaleTimeString()} — Status: <span className="text-green-500">Active</span>
+            </p>
+          </div>
 
-            {/* --- DESKTOP NAVIGATION --- */}
-            <div className="hidden lg:flex items-center gap-10">
-              <div className="flex items-center gap-8 px-8 py-3 bg-white/[0.03] border border-white/5 rounded-full backdrop-blur-md">
-                {navLinks.map((link) => (
-                  <Link key={link.path} to={link.path} className="relative group">
-                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors duration-300 ${
-                      location.pathname === link.path ? 'text-gold' : 'text-gray-400 group-hover:text-white'
-                    }`}>
-                      {link.name}
-                    </span>
-                    {location.pathname === link.path && (
-                      <motion.div 
-                        layoutId="nav-dot"
-                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-gold rounded-full"
-                      />
-                    )}
-                  </Link>
-                ))}
-              </div>
-
-              <Link
-                to="/booking"
-                className="group relative overflow-hidden px-8 py-3 bg-gold rounded-full transition-all hover:shadow-[0_0_30px_rgba(212,175,55,0.3)] active:scale-95"
-              >
-                <div className="relative z-10 flex items-center gap-2">
-                   <Sparkles size={14} className="text-black" />
-                   <span className="text-[10px] font-black uppercase tracking-widest text-black">Reserve Date</span>
-                </div>
-                <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-              </Link>
-            </div>
-
-            {/* --- MOBILE TOGGLE --- */}
-            <button
-              onClick={toggleMobileMenu}
-              className="lg:hidden relative z-[70] w-11 h-11 flex items-center justify-center rounded-xl bg-white/[0.05] border border-white/10 text-white active:scale-90 transition-all"
+          <div className="flex w-full md:w-auto gap-3">
+            <button 
+              onClick={() => setShowCreateModal(true)} 
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white text-black px-6 py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-amber-500 transition-all active:scale-95"
             >
-              <AnimatePresence mode="wait">
-                {isMobileMenuOpen ? (
-                  <motion.div key="close" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}>
-                    <X size={22} />
-                  </motion.div>
-                ) : (
-                  <motion.div key="menu" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}>
-                    <Menu size={22} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <Plus size={18} /> New Post
+            </button>
+            <button onClick={() => signOut()} className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-red-500/20 text-gray-400 hover:text-red-500 transition-all">
+              <LogOut size={20} />
             </button>
           </div>
-        </div>
-      </motion.nav>
+        </header>
 
-      {/* --- MOBILE OVERLAY MENU --- */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: '100%' }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[55] lg:hidden bg-black flex flex-col pt-32 px-10 pb-12 overflow-y-auto"
+        {/* BENTO GRID - FIXED CLICKABLE CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-12">
+          
+          {/* BOOKINGS CARD (Full Width on Mobile) */}
+          <Link 
+            to="/admin/bookings" 
+            className="md:col-span-2 group bg-[#0d0d0d] p-8 rounded-[2rem] border border-white/5 hover:border-amber-500/30 transition-all duration-300 flex flex-col justify-between min-h-[200px]"
           >
-            {/* Background Texture for Mobile Menu */}
-            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-gold/5 rounded-full blur-[100px] pointer-events-none" />
+            <Calendar className="text-amber-500" size={32} />
+            <div>
+              <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Bookings</h3>
+              <div className="text-6xl font-bold">{stats.bookings}</div>
+            </div>
+          </Link>
 
-            <div className="flex flex-col h-full space-y-8 relative z-10">
-              <div className="space-y-4">
-                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-gold/40">Navigation</span>
-                <div className="flex flex-col gap-6">
-                  {navLinks.map((link, index) => (
-                    <motion.div
-                      key={link.path}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Link
-                        to={link.path}
-                        className={`text-5xl md:text-6xl font-playfair font-bold tracking-tighter transition-all block ${
-                          location.pathname === link.path ? 'text-gold italic pl-4' : 'text-white'
-                        }`}
-                      >
-                        {link.name}
-                      </Link>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
+          {/* ALBUMS CARD - FIXED REDIRECTION */}
+          <Link 
+            to="/admin/albums" 
+            className="group bg-[#0d0d0d] p-8 rounded-[2rem] border border-white/5 hover:border-blue-500/30 transition-all duration-300 flex flex-col justify-between min-h-[200px]"
+          >
+            <ImageIcon className="text-blue-500" size={32} />
+            <div>
+              <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Albums</h3>
+              <div className="text-6xl font-bold">{stats.albums}</div>
+            </div>
+          </Link>
 
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="mt-auto space-y-8"
+          {/* VIDEOS CARD - FIXED REDIRECTION */}
+          <Link 
+            to="/admin/videos" 
+            className="group bg-[#0d0d0d] p-8 rounded-[2rem] border border-white/5 hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between min-h-[200px]"
+          >
+            <Video className="text-purple-500" size={32} />
+            <div>
+              <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Videos</h3>
+              <div className="text-6xl font-bold">{stats.videos}</div>
+            </div>
+          </Link>
+
+        </div>
+
+        {/* RECENT ARCHIVES SECTION */}
+        <section className="bg-[#0d0d0d] p-6 md:p-10 rounded-[2.5rem] border border-white/5">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <Layers className="text-amber-500" size={24} />
+              <h3 className="text-xl font-bold tracking-tight">Recent Archives</h3>
+            </div>
+            <Link to="/admin/albums" className="text-[10px] font-bold uppercase text-gray-500 hover:text-white transition-colors">See All</Link>
+          </div>
+          
+          <div className="space-y-3">
+            {albumsList.slice(0, 5).map((album) => (
+              <button 
+                key={album.id} 
+                onClick={() => openAlbumPreview(album)} 
+                className="w-full flex items-center justify-between p-5 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all text-left group"
               >
-                <div className="space-y-4">
-                  <Link
-                    to="/booking"
-                    className="flex items-center justify-center gap-3 w-full py-5 bg-gold text-black rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-gold/10"
-                  >
-                    <Sparkles size={16} />
-                    Start Your Story
-                  </Link>
-                  
-                  <a
-                    href="tel:+639922183874"
-                    className="flex items-center justify-center gap-3 w-full py-5 bg-white/5 border border-white/10 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em]"
-                  >
-                    <Phone size={16} className="text-gold" />
-                    Quick Call
-                  </a>
-                </div>
+                <span className="font-medium text-sm text-gray-300 group-hover:text-white">{album.name}</span>
+                <ChevronRight size={16} className="text-gray-600 group-hover:translate-x-1 transition-transform" />
+              </button>
+            ))}
+          </div>
+        </section>
 
-                <div className="flex items-center justify-between border-t border-white/5 pt-8">
-                   <div className="flex gap-5 text-gray-400">
-                      <a href="https://facebook.com" target="_blank" rel="noreferrer" className="hover:text-gold transition-colors"><Facebook size={22} /></a>
-                      <a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-gold transition-colors"><Instagram size={22} /></a>
-                   </div>
-                   <div className="text-right">
-                      <p className="text-[8px] font-black uppercase tracking-widest text-gray-600">Based in Philippines</p>
-                      <p className="text-[10px] font-bold text-white/40">Misamis Oriental</p>
-                   </div>
+        {/* MODAL: CREATE NEW POST (MULTIPLE UPLOAD) */}
+        <AnimatePresence>
+          {showCreateModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#0d0d0d] w-full max-w-lg p-8 md:p-10 rounded-[2.5rem] border border-white/10 max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-bold">New Post</h2>
+                  <button onClick={resetForm} className="text-gray-500 hover:text-white"><X /></button>
                 </div>
+                
+                <form onSubmit={handleCreatePost} className="space-y-6">
+                  {/* TYPE PICKER */}
+                  <div className="flex p-1.5 bg-white/5 rounded-xl">
+                    {['image', 'video'].map((type) => (
+                      <button 
+                        key={type} 
+                        type="button" 
+                        onClick={() => {setPostType(type as any); setSelectedFiles([]);}} 
+                        className={`flex-1 py-3 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all ${postType === type ? 'bg-amber-500 text-black' : 'text-gray-500'}`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* DYNAMIC FORM */}
+                  {postType === 'image' ? (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Album Destination</label>
+                      <select required className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm outline-none focus:border-amber-500 transition-all appearance-none"
+                        value={selectedAlbumId} onChange={(e) => setSelectedAlbumId(e.target.value)}>
+                        <option value="" className="bg-black">Select an album</option>
+                        {albumsList.map(a => <option key={a.id} value={a.id} className="bg-black">{a.name}</option>)}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Video Title</label>
+                      <input required type="text" placeholder="Cinematic Title..." className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm outline-none focus:border-amber-500 transition-all"
+                        value={title} onChange={(e) => setTitle(e.target.value)} />
+                    </div>
+                  )}
+
+                  {/* FILE DROPZONE */}
+                  <div className="relative border-2 border-dashed border-white/10 rounded-2xl p-10 text-center hover:border-amber-500/50 transition-all bg-white/5 group">
+                    <input 
+                      type="file" 
+                      multiple={postType === 'image'} 
+                      accept={postType === 'image' ? "image/*" : "video/*"} 
+                      className="absolute inset-0 opacity-0 cursor-pointer" 
+                      onChange={handleFileChange} 
+                    />
+                    <Upload className="mx-auto text-amber-500 mb-2 group-hover:scale-110 transition-transform" size={32} />
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      {postType === 'image' ? "Upload Images (Multiple)" : "Upload Video File"}
+                    </p>
+                  </div>
+
+                  {/* MULTIPLE PREVIEW GALLERY */}
+                  {selectedFiles.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-2 bg-black/40 rounded-xl border border-white/5">
+                      {selectedFiles.map((file, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-white/10">
+                          {file.type.startsWith('image') ? (
+                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center"><Video size={16} /></div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {postType === 'video' && (
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between">
+                       <span className="text-[10px] font-bold text-gray-500 uppercase">{thumbnailFile ? thumbnailFile.name : "Cover Image"}</span>
+                       <input type="file" accept="image/*" className="w-20 text-[10px]" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
+                    </div>
+                  )}
+
+                  <button 
+                    disabled={submitting || selectedFiles.length === 0} 
+                    type="submit" 
+                    className="w-full bg-amber-500 text-black py-4 rounded-xl font-bold uppercase text-xs tracking-[0.2em] shadow-lg shadow-amber-500/10 active:scale-[0.98] transition-all disabled:opacity-30"
+                  >
+                    {submitting ? <Loader2 className="animate-spin mx-auto" /> : "Publish to Portfolio"}
+                  </button>
+                </form>
               </motion.div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 };
