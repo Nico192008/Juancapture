@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react'; // TAMA: Lowercase 'i' na ito
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const LoadingScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
 
+  // Bilang ng photos na nilagay mo sa /public/images/loading/
+  const totalPhotos = 8; 
+  const photos = Array.from({ length: totalPhotos }, (_, i) => `/images/loading/load-${i + 1}.jpg`);
+
   useEffect(() => {
-    // Kinokontrol nito ang tagal ng loading screen
+    // 4.5 seconds para malasap ng client ang inyong portfolio montage
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 3000);
+    }, 4500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -17,115 +21,118 @@ export const LoadingScreen = () => {
     <AnimatePresence mode="wait">
       {isLoading && (
         <motion.div
-          key="juan-captures-loader"
+          key="juan-captures-cinematic-loader"
           initial={{ opacity: 1 }}
           exit={{ 
             opacity: 0,
-            scale: 1.05,
-            transition: { duration: 1, ease: [0.43, 0.13, 0.23, 0.96] } 
+            scale: 1.1,
+            filter: "blur(20px)",
+            transition: { duration: 1.2, ease: [0.65, 0, 0.35, 1] } 
           }}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505] overflow-hidden"
         >
-          {/* Ambient Background Particles - Inayos para sa Vercel/SSR compatibility */}
-          <div className="absolute inset-0 pointer-events-none">
-            {[...Array(15)].map((_, i) => (
+          {/* --- LAYER 1: ACTUAL PHOTOSHOOT MONTAGE GRID --- */}
+          <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 p-4 opacity-30 pointer-events-none">
+            {photos.map((src, index) => (
               <motion.div
-                key={i}
-                className="absolute w-1 h-1 bg-gold/20 rounded-full"
-                style={{ 
-                  left: `${(i * 7) % 100}%`, // Static distribution para iwas hydration error
-                  top: `${(i * 13) % 100}%` 
-                }}
+                key={index}
+                className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-white/5 border border-white/5"
+                initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ 
-                  y: [0, -100],
-                  opacity: [0, 0.5, 0] 
+                  opacity: [0, 1, 0], 
+                  scale: [0.9, 1, 1.1],
+                  y: [20, 0, -20]
                 }}
                 transition={{ 
                   duration: 3, 
                   repeat: Infinity, 
-                  delay: i * 0.2,
-                  ease: "linear" 
+                  repeatDelay: 1,
+                  delay: index * 0.3, // Staggered reveal ng photos
+                  ease: "easeInOut" 
                 }}
-              />
+              >
+                <img
+                  src={src}
+                  alt="Juan Captures Portfolio Montage"
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                />
+                {/* Subtle Vignette sa bawat photo */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              </motion.div>
             ))}
           </div>
 
+          {/* Cinematic Overlays */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-black to-transparent" />
+          <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black to-transparent" />
+
+          {/* --- LAYER 2: BRAND REVEAL --- */}
           <div className="relative z-10 text-center px-6">
-            {/* Logo Section */}
             <motion.div
-              initial={{ scale: 0.8, opacity: 0, rotate: -5 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-              className="relative mb-12"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="relative h-48 w-48 md:h-64 md:w-64 mx-auto">
-                {/* Rotating Outer Ring */}
+              {/* Animated Lens/Aperture Icon */}
+              <div className="relative w-20 h-20 mx-auto mb-10">
                 <motion.div 
-                  className="absolute inset-[-12px] rounded-full border border-gold/10 border-t-gold/60"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 rounded-full border-2 border-gold/20"
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
                 />
-                
-                {/* Main Logo Container */}
-                <div className="h-full w-full rounded-full overflow-hidden border-2 border-gold/30 p-2 shadow-[0_0_60px_rgba(212,175,55,0.15)] bg-black">
-                  <motion.img
-                    src="/1775314217196.jpg"
-                    alt="Juan Captures"
-                    className="h-full w-full object-cover rounded-full"
-                    animate={{
-                      filter: [
-                        'contrast(1) brightness(1)',
-                        'contrast(1.1) brightness(1.2)',
-                        'contrast(1) brightness(1)',
-                      ],
-                    }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                  />
+                <motion.div 
+                  className="absolute inset-0 rounded-full border-t-2 border-gold"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                />
+                <div className="absolute inset-4 rounded-full border border-gold/40 flex items-center justify-center">
+                  <div className="w-2 h-2 bg-gold rounded-full shadow-[0_0_10px_#D4AF37]" />
                 </div>
               </div>
-            </motion.div>
 
-            {/* Text Animations */}
-            <div className="space-y-6 overflow-hidden">
-              <div className="space-y-2">
+              {/* Brand Typography */}
+              <div className="space-y-4">
                 <motion.h1
-                  initial={{ y: 40, opacity: 0, letterSpacing: "0.2em" }}
-                  animate={{ y: 0, opacity: 1, letterSpacing: "0.4em" }}
-                  transition={{ delay: 0.5, duration: 1.2, ease: "easeOut" }}
-                  className="text-3xl md:text-5xl font-playfair font-black text-white uppercase"
+                  initial={{ opacity: 0, letterSpacing: "0.1em" }}
+                  animate={{ opacity: 1, letterSpacing: "0.4em" }}
+                  transition={{ delay: 1.2, duration: 1.5, ease: "easeOut" }}
+                  className="text-4xl md:text-7xl font-playfair font-black text-white uppercase tracking-tighter"
                 >
-                  Juan Captures
+                  Juan <span className="italic text-gold/90">Captures</span>
                 </motion.h1>
                 
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 1.4, duration: 1 }}
+                  transition={{ delay: 2, duration: 1 }}
                   className="flex flex-col items-center"
                 >
-                  <div className="h-[1px] w-16 bg-gold/30 mb-4" />
-                  <p className="text-gold font-vibes text-2xl md:text-3xl tracking-widest">
+                  <div className="h-[1px] w-20 bg-gold/50 mb-4 shadow-[0_0_10px_rgba(212,175,55,0.5)]" />
+                  <p className="text-gold font-vibes text-2xl md:text-4xl tracking-widest leading-none">
                     Creating Visual Legacies
                   </p>
                 </motion.div>
               </div>
+            </motion.div>
 
-              {/* Progress Loading Bar */}
-              <div className="mt-12 w-40 h-[1px] bg-white/10 mx-auto relative overflow-hidden">
-                <motion.div
-                  className="absolute inset-0 bg-gold/60 shadow-[0_0_10px_rgba(212,175,55,0.5)]"
-                  initial={{ x: "-100%" }}
-                  animate={{ x: "100%" }}
-                  transition={{ 
-                    duration: 2, 
-                    repeat: Infinity, 
-                    ease: "easeInOut" 
-                  }}
-                />
-              </div>
+            {/* Premium Loading Indicator */}
+            <div className="mt-20 flex flex-col items-center gap-3">
+               <div className="w-48 h-[1px] bg-white/10 relative overflow-hidden rounded-full">
+                  <motion.div
+                    className="absolute inset-0 bg-gold shadow-[0_0_15px_#D4AF37]"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                  />
+               </div>
+               <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white/30">
+                 Initializing Gallery
+               </span>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );
