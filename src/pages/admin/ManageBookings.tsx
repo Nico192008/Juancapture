@@ -1,7 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Mail, CheckCircle, Clock, Trash2, Send, AlertCircle, XCircle, Phone } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Mail, 
+  CheckCircle, 
+  Clock, 
+  Trash2, 
+  Send, 
+  AlertCircle, 
+  XCircle, 
+  Phone, 
+  ChevronLeft,
+  User,
+  Calendar,
+  MessageSquare,
+  ArrowUpRight,
+  Loader2
+} from 'lucide-react';
 import { Booking } from '../../types';
 import { supabase } from '../../lib/supabase';
 import emailjs from '@emailjs/browser';
@@ -9,12 +24,12 @@ import emailjs from '@emailjs/browser';
 export const ManageBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // EmailJS Config - Palitan ang 'template_REJECTION_ID' ng actual ID mo sa EmailJS
   const EMAILJS_SERVICE_ID = "service_4n5zlku";
   const EMAILJS_PUBLIC_KEY = "Jb0rUyGCKXb-bMlWt";
   const CONFIRMATION_TEMPLATE_ID = "template_z8t052n";
-  const REJECTION_TEMPLATE_ID = "template_8wjwei8"; // <--- ILAGAY DITO ANG REJECTION TEMPLATE ID
+  const REJECTION_TEMPLATE_ID = "template_8wjwei8";
 
   useEffect(() => {
     fetchBookings();
@@ -30,38 +45,31 @@ export const ManageBookings = () => {
       if (error) throw error;
       if (data) setBookings(data);
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.error('Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const updateStatus = async (id: string, status: string) => {
+    setActionLoading(id);
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status })
-        .eq('id', id);
-
+      const { error } = await supabase.from('bookings').update({ status }).eq('id', id);
       if (error) throw error;
 
       const booking = bookings.find(b => b.id === id);
       if (booking) {
-        if (status === 'confirmed') {
-          await sendConfirmationEmail(booking);
-        } else if (status === 'rejected') {
-          await sendRejectionEmail(booking);
-        }
+        if (status === 'confirmed') await sendConfirmationEmail(booking);
+        else if (status === 'rejected') await sendRejectionEmail(booking);
       }
-
       fetchBookings();
     } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Failed to update booking status.');
+      alert('Update failed.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  // Helper to clean hidden characters from email strings
   const sanitizeEmail = (email: string) => email.trim().replace(/[^\x20-\x7E]/g, "");
 
   const sendConfirmationEmail = async (booking: Booking) => {
@@ -76,12 +84,9 @@ export const ManageBookings = () => {
         }),
         message: "Your booking has been officially confirmed by Juan Captures. We've reserved the date for you!",
       };
-
       await emailjs.send(EMAILJS_SERVICE_ID, CONFIRMATION_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
-      alert(`Success: Confirmation sent to ${cleanEmail}`);
     } catch (error) {
-      console.error('Confirmation Email Error:', error);
-      alert('Confirmed in system, but email failed to send.');
+      console.error('Email failed');
     }
   };
 
@@ -95,57 +100,73 @@ export const ManageBookings = () => {
         event_date: new Date(booking.event_date).toLocaleDateString('en-US', {
           year: 'numeric', month: 'long', day: 'numeric',
         }),
-        message: "We regret to inform you that we cannot cater your request for this date as we are already fully booked. Thank you for your interest!",
+        message: "We regret to inform you that we cannot cater your request for this date as we are already fully booked.",
       };
-
       await emailjs.send(EMAILJS_SERVICE_ID, REJECTION_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
-      alert(`Success: Rejection notice sent to ${cleanEmail}`);
     } catch (error) {
-      console.error('Rejection Email Error:', error);
-      alert('Rejected in system, but email failed to send.');
+      console.error('Email failed');
     }
   };
 
   const deleteBooking = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this booking?')) return;
+    if (!confirm('Remove this booking from records?')) return;
     try {
-      const { error } = await supabase.from('bookings').delete().eq('id', id);
-      if (error) throw error;
+      await supabase.from('bookings').delete().eq('id', id);
       fetchBookings();
     } catch (error) {
-      console.error('Error deleting:', error);
+      console.error('Delete error');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-gold" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-4">
+      <Loader2 className="animate-spin text-gold w-8 h-8" />
+      <p className="text-[10px] uppercase tracking-[0.3em] text-gold/50 font-bold">Accessing Client Logs</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen pt-32 pb-20 bg-black text-white">
-      <div className="container-custom px-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-          <div>
-            <h1 className="text-5xl font-playfair font-bold mb-2 text-white">Manage Bookings</h1>
-            <p className="text-gray-400">Review and update client photography requests</p>
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-gold/30">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[10%] left-[-5%] w-[30%] h-[30%] bg-gold/5 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 container-custom pt-32 pb-20 px-6">
+        
+        {/* HEADER */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-16 gap-8">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <div className="flex items-center gap-2 mb-4">
+              <Link to="/admin/dashboard" className="p-2 bg-white/5 border border-white/10 rounded-full text-gray-400 hover:text-gold transition-colors">
+                <ChevronLeft size={18} />
+              </Link>
+              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-gold/60">Booking Inquiry System</span>
+            </div>
+            <h1 className="text-6xl font-playfair font-bold tracking-tighter italic">Schedule</h1>
+          </motion.div>
+
+          <div className="glass-strong px-6 py-4 rounded-2xl border border-white/5 flex items-center gap-8">
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Requests</p>
+              <p className="text-2xl font-bold font-mono">{bookings.length}</p>
+            </div>
+            <div className="w-[1px] h-8 bg-white/10" />
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-gold uppercase tracking-widest mb-1">New Pending</p>
+              <p className="text-2xl font-bold font-mono">{bookings.filter(b => b.status === 'pending').length}</p>
+            </div>
           </div>
-          <Link to="/admin/dashboard" className="btn-gold-outline px-6 py-2 rounded-full border border-gold text-gold hover:bg-gold hover:text-black transition-all">
-            Back to Dashboard
-          </Link>
         </div>
 
-        <div className="grid gap-6">
+        {/* BOOKINGS LIST */}
+        <div className="space-y-6">
           {bookings.map((booking, index) => {
             const status = (booking.status || 'pending').toLowerCase();
             const statusConfig = {
-              pending: { icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/20' },
-              confirmed: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10', border: 'border-green-400/20' },
-              rejected: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10', border: 'border-red-400/20' },
-              cancelled: { icon: AlertCircle, color: 'text-gray-400', bg: 'bg-gray-400/10', border: 'border-gray-400/20' },
+              pending: { icon: Clock, color: 'text-amber-400', border: 'border-amber-400/20', glow: 'shadow-amber-400/5' },
+              confirmed: { icon: CheckCircle, color: 'text-emerald-400', border: 'border-emerald-400/20', glow: 'shadow-emerald-400/5' },
+              rejected: { icon: XCircle, color: 'text-red-400', border: 'border-red-400/20', glow: 'shadow-red-400/5' },
+              cancelled: { icon: AlertCircle, color: 'text-gray-500', border: 'border-white/10', glow: 'shadow-transparent' },
             };
             const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
             const StatusIcon = config.icon;
@@ -156,81 +177,110 @@ export const ManageBookings = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={`glass-strong p-6 rounded-xl border ${config.border} hover:shadow-2xl transition-all duration-300`}
+                className={`group glass-strong p-8 rounded-[2.5rem] border ${config.border} ${config.glow} hover:border-white/20 transition-all duration-500 relative overflow-hidden`}
               >
-                <div className="flex flex-col lg:flex-row justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-2xl font-playfair font-bold text-white">{booking.name}</h3>
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 ${config.bg} ${config.color}`}>
-                        <StatusIcon size={12} /> {status}
-                      </span>
+                {/* STATUS INDICATOR BAR */}
+                <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-12 rounded-r-full ${config.color.replace('text', 'bg')}`} />
+
+                <div className="flex flex-col xl:flex-row justify-between gap-10">
+                  <div className="flex-1 space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-gray-400 border border-white/10 group-hover:border-gold/30 transition-colors">
+                          <User size={20} />
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-playfair font-bold text-white tracking-tight">{booking.name}</h3>
+                          <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] ${config.color} mt-1`}>
+                            <StatusIcon size={12} /> {status}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-400">
-                      <a href={`mailto:${booking.email}`} className="flex items-center gap-1 hover:text-gold transition-colors">
-                        <Mail size={14} /> {booking.email}
+                    <div className="flex flex-wrap gap-6">
+                      <a href={`mailto:${booking.email}`} className="flex items-center gap-2 text-sm text-gray-400 hover:text-gold transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"><Mail size={14} /></div>
+                        {booking.email}
                       </a>
                       {booking.phone && (
-                        <span className="flex items-center gap-1">
-                          <Phone size={14} /> {booking.phone}
-                        </span>
+                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"><Phone size={14} /></div>
+                          {booking.phone}
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-8 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-8 p-6 bg-white/[0.02] border border-white/5 rounded-3xl">
                     <div>
-                      <p className="text-gray-500 uppercase text-[10px] tracking-widest mb-1">Event Type</p>
-                      <p className="font-semibold text-white">{booking.event_type}</p>
+                      <p className="text-gray-500 uppercase text-[9px] font-bold tracking-widest mb-2 flex items-center gap-2">
+                        <ArrowUpRight size={12} className="text-gold" /> Service
+                      </p>
+                      <p className="font-bold text-white text-sm">{booking.event_type}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500 uppercase text-[10px] tracking-widest mb-1">Event Date</p>
-                      <p className="font-semibold text-gold">{new Date(booking.event_date).toDateString()}</p>
+                      <p className="text-gray-500 uppercase text-[9px] font-bold tracking-widest mb-2 flex items-center gap-2">
+                        <Calendar size={12} className="text-gold" /> Event Date
+                      </p>
+                      <p className="font-bold text-white text-sm">{new Date(booking.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                     </div>
                     <div className="hidden md:block">
-                      <p className="text-gray-500 uppercase text-[10px] tracking-widest mb-1">Created At</p>
-                      <p className="text-white">{new Date(booking.created_at!).toLocaleDateString()}</p>
+                      <p className="text-gray-500 uppercase text-[9px] font-bold tracking-widest mb-2 flex items-center gap-2">
+                        <Clock size={12} className="text-gold" /> Logged
+                      </p>
+                      <p className="text-gray-400 text-sm">{new Date(booking.created_at!).toLocaleDateString()}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 p-4 bg-white/5 rounded-lg border border-white/5">
-                  <p className="text-gray-500 uppercase text-[10px] tracking-widest mb-1">Client Message</p>
-                  <p className="text-gray-300 italic text-sm">"{booking.message}"</p>
+                {/* MESSAGE BOX */}
+                <div className="mt-8 flex gap-4">
+                  <div className="shrink-0 pt-1 text-gold/30"><MessageSquare size={18} /></div>
+                  <div className="flex-1 p-5 bg-black/40 rounded-2xl border border-white/5 relative">
+                    <p className="text-gray-400 text-sm leading-relaxed italic">
+                      "{booking.message || "No specific instructions provided."}"
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-white/10 flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500 font-medium uppercase">Change Status:</span>
-                    <select
-                      value={status}
-                      onChange={(e) => updateStatus(booking.id!, e.target.value)}
-                      className="bg-black/50 border border-white/20 text-white text-sm rounded-lg px-4 py-2 focus:ring-1 focus:ring-gold outline-none cursor-pointer"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="confirmed">Confirm (Send Email)</option>
-                      <option value="rejected">Reject (Fully Booked)</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
+                {/* ACTIONS */}
+                <div className="mt-8 pt-8 border-t border-white/5 flex flex-wrap items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-600">Update Status</span>
+                    <div className="relative group/select">
+                      <select
+                        disabled={actionLoading === booking.id}
+                        value={status}
+                        onChange={(e) => updateStatus(booking.id!, e.target.value)}
+                        className="bg-white/5 border border-white/10 text-white text-xs font-bold uppercase tracking-widest rounded-xl px-5 py-3 focus:border-gold outline-none cursor-pointer hover:bg-white/10 transition-all appearance-none pr-10"
+                      >
+                        <option value="pending" className="bg-[#050505]">Pending Inquiry</option>
+                        <option value="confirmed" className="bg-[#050505]">Confirm & Send Email</option>
+                        <option value="rejected" className="bg-[#050505]">Reject (Full Booked)</option>
+                        <option value="cancelled" className="bg-[#050505]">Mark Cancelled</option>
+                      </select>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"><ArrowUpRight size={14} className="rotate-90" /></div>
+                    </div>
+
+                    {actionLoading === booking.id && <Loader2 className="animate-spin text-gold" size={18} />}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     {status === 'confirmed' && (
-                      <button onClick={() => sendConfirmationEmail(booking)} className="flex items-center gap-2 text-xs text-green-400 hover:text-green-300 px-3 py-2 bg-green-400/5 rounded-lg transition-all">
-                        <Send size={14} /> Resend Confirmation
+                      <button onClick={() => sendConfirmationEmail(booking)} className="group/btn flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:bg-emerald-400/10 px-4 py-2.5 rounded-full border border-emerald-400/10 transition-all">
+                        <Send size={14} className="group-hover/btn:translate-x-1 transition-transform" /> Resend Confirmation
                       </button>
                     )}
                     {status === 'rejected' && (
-                      <button onClick={() => sendRejectionEmail(booking)} className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 px-3 py-2 bg-red-400/5 rounded-lg transition-all">
-                        <Send size={14} /> Resend Rejection
+                      <button onClick={() => sendRejectionEmail(booking)} className="group/btn flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-red-400 hover:bg-red-400/10 px-4 py-2.5 rounded-full border border-red-400/10 transition-all">
+                        <Send size={14} className="group-hover/btn:translate-x-1 transition-transform" /> Resend Rejection
                       </button>
                     )}
+                    <button onClick={() => deleteBooking(booking.id!)} className="p-2.5 text-gray-600 hover:text-red-500 hover:bg-red-500/5 rounded-xl transition-all" title="Delete Record">
+                      <Trash2 size={18} />
+                    </button>
                   </div>
-
-                  <button onClick={() => deleteBooking(booking.id!)} className="ml-auto text-gray-500 hover:text-red-500 transition-all flex items-center gap-1 text-xs">
-                    <Trash2 size={14} /> Delete Record
-                  </button>
                 </div>
               </motion.div>
             );
@@ -238,9 +288,12 @@ export const ManageBookings = () => {
         </div>
 
         {bookings.length === 0 && (
-          <div className="text-center py-32 bg-white/5 rounded-2xl border border-dashed border-white/10">
-            <Clock className="mx-auto text-gray-600 mb-4" size={48} />
-            <p className="text-gray-400 text-lg">No booking requests found.</p>
+          <div className="text-center py-40 bg-white/[0.02] rounded-[3.5rem] border border-dashed border-white/10">
+            <div className="bg-white/5 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Calendar className="text-gray-600" size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-400">The Schedule is Open</h3>
+            <p className="text-gray-600 mt-2 text-sm font-medium">Wait for inquiries to appear here.</p>
           </div>
         )}
       </div>
