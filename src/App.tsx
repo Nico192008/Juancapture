@@ -20,6 +20,7 @@ import { ManageVideos } from './pages/admin/ManageVideos';
 import { ManageBookings } from './pages/admin/ManageBookings';
 import { ManageTestimonials } from './pages/admin/ManageTestimonials';
 
+
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
