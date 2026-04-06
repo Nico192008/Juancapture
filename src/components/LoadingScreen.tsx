@@ -16,118 +16,124 @@ export const LoadingScreen = () => {
   ], []);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#030303] overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505] overflow-hidden">
       
-      {/* --- LAYER 1: CINEMATIC FLOATING TILES (Background) --- */}
+      {/* --- LAYER 1: VIVID FLOATING TILES (Pinilinaw na Background) --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {photos.map((src, index) => (
           <motion.div
-            key={`smooth-tile-${index}`}
-            className="absolute rounded-3xl overflow-hidden shadow-2xl border border-white/[0.03]"
+            key={`vivid-tile-${index}`}
+            className="absolute rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-white/10"
             style={{
-              // Magkakaibang sukat para sa "Depth of Field" effect
-              width: index % 3 === 0 ? '160px' : index % 3 === 1 ? '220px' : '130px',
-              height: index % 3 === 0 ? '220px' : index % 3 === 1 ? '300px' : '180px',
+              width: index % 3 === 0 ? '180px' : index % 3 === 1 ? '240px' : '150px',
+              height: index % 3 === 0 ? '240px' : index % 3 === 1 ? '320px' : '200px',
               left: `${(index * 14) % 85}%`,
               top: `${(index * 22) % 80}%`,
-              zIndex: index % 3, // Mas malaki, mas nasa harap
+              zIndex: index % 3,
             }}
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 60 }}
             animate={{ 
-              opacity: [0, 0.25, 0], 
-              y: [-20, -100], // Mas mahaba at mas mabagal na float
-              x: index % 2 === 0 ? [0, 20, 0] : [0, -20, 0], // Soft swaying
-              rotate: index % 2 === 0 ? [-3, 3] : [3, -3]
+              // Pinataas ang opacity mula 0.25 patungong 0.5 para mas malinaw
+              opacity: [0, 0.5, 0], 
+              y: [-10, -150], 
+              x: index % 2 === 0 ? [0, 25, 0] : [0, -25, 0],
+              rotate: index % 2 === 0 ? [-2, 2] : [2, -2]
             }}
             transition={{ 
-              duration: 12 + (index % 6), // Sobrang bagal para sa cinematic feel
+              duration: 12 + (index % 5),
               repeat: Infinity, 
-              delay: index * 0.7,
-              ease: "linear" // Linear para walang biglang hinto
+              delay: index * 0.5,
+              ease: "easeInOut" 
             }}
           >
             <img 
               src={src} 
               alt="" 
-              className="w-full h-full object-cover grayscale-[60%] contrast-110 blur-[2px]" 
+              className="w-full h-full object-cover brightness-[0.8] contrast-125 blur-[0.2px]" 
             />
-            {/* Darker gradient mask per tile */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+            {/* Subtle Gradient overlay para magmukhang cinematic */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           </motion.div>
         ))}
       </div>
 
-      {/* Cinematic Vignette & Blur Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-radial from-transparent via-[#050505]/60 to-[#050505] backdrop-blur-[3px]" />
+      {/* Cinematic Vignette (Reduced blur para mas malinaw ang background) */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70 backdrop-blur-[1px]" />
 
-      {/* --- LAYER 2: LOGO & BRANDING --- */}
+      {/* --- LAYER 2: LOGO & BRANDING WITH INTENSE GLOW --- */}
       <div className="relative z-10 text-center px-6">
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }} // Custom "Expo" ease for smoothness
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/* LOGO WITH BREATHING GLOW */}
+          {/* LOGO CONTAINER WITH FIXED GLOW */}
           <div className="relative mb-14">
             <div className="relative h-48 w-48 md:h-64 md:w-64 mx-auto">
-              {/* Soft Pulsing Aura */}
+              
+              {/* 1. INTENSE CORE GLOW (The "Bloom" effect) */}
               <motion.div 
-                className="absolute inset-0 rounded-full bg-gold/15 blur-[60px]"
-                animate={{ scale: [1, 1.25, 1], opacity: [0.2, 0.4, 0.2] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-[-20px] rounded-full bg-gold/30 blur-[45px]"
+                animate={{ opacity: [0.4, 0.8, 0.4], scale: [0.9, 1.1, 0.9] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               />
-              {/* Spinning Thin Ring */}
+
+              {/* 2. GLOWING OUTER RING */}
               <motion.div 
-                className="absolute inset-[-18px] rounded-full border border-gold/10 border-t-gold/40 shadow-[0_0_40px_rgba(212,175,55,0.1)]"
+                className="absolute inset-[-12px] rounded-full border-2 border-gold/20 border-t-gold shadow-[0_0_35px_rgba(212,175,55,0.4)]"
                 animate={{ rotate: 360 }}
-                transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
               />
-              {/* Main Logo Image */}
-              <div className="relative h-full w-full rounded-full overflow-hidden border border-gold/30 p-2 bg-black shadow-[0_0_80px_rgba(0,0,0,1)]">
+              
+              {/* 3. MAIN LOGO BOX */}
+              <div className="relative h-full w-full rounded-full overflow-hidden border-2 border-gold/50 p-2 bg-black shadow-[0_0_100px_rgba(212,175,55,0.3)]">
                 <motion.img
                   src="/1775314217196.jpg"
                   alt="Juan Captures Official Logo"
                   className="h-full w-full object-cover rounded-full"
-                  animate={{ filter: ['brightness(1) contrast(1)', 'brightness(1.15) contrast(1.05)', 'brightness(1) contrast(1)'] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  animate={{ 
+                    filter: [
+                      'brightness(1) drop-shadow(0 0 5px rgba(212,175,55,0))', 
+                      'brightness(1.3) drop-shadow(0 0 20px rgba(212,175,55,0.8))', 
+                      'brightness(1) drop-shadow(0 0 5px rgba(212,175,55,0))'
+                    ] 
+                  }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 />
               </div>
             </div>
           </div>
 
+          {/* TEXT SECTION */}
           <div className="space-y-8">
-            <h1 className="text-4xl md:text-7xl font-playfair font-black text-white uppercase tracking-[0.4em] drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-              Juan <span className="italic text-gold/90">Captures</span>
+            <h1 className="text-4xl md:text-7xl font-playfair font-black text-white uppercase tracking-[0.4em] drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+              Juan <span className="italic text-gold">Captures</span>
             </h1>
             
             <motion.div 
-              className="h-[1px] w-32 bg-gold/40 mx-auto"
-              animate={{ width: [100, 160, 100], opacity: [0.3, 0.7, 0.3] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="h-[1.5px] w-36 bg-gold mx-auto shadow-[0_0_15px_#D4AF37]"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
             />
             
-            <p className="text-gold font-vibes text-3xl md:text-5xl tracking-widest pt-2 opacity-80 drop-shadow-[0_0_10px_rgba(212,175,55,0.3)]">
+            <p className="text-gold font-vibes text-3xl md:text-6xl tracking-widest pt-2 drop-shadow-[0_0_15px_rgba(212,175,55,0.5)]">
               Capturing Moments, Creating Memories
             </p>
           </div>
         </motion.div>
 
-        {/* ULTRA-SMOOTH PROGRESS BAR */}
+        {/* PROGRESS BAR */}
         <div className="mt-28 flex flex-col items-center gap-5">
-           <div className="w-64 h-[1.5px] bg-white/5 relative overflow-hidden rounded-full">
+           <div className="w-72 h-[2px] bg-white/10 relative overflow-hidden rounded-full">
               <motion.div
-                className="absolute inset-0 bg-gold shadow-[0_0_20px_#D4AF37]"
+                className="absolute inset-0 bg-gold shadow-[0_0_25px_#D4AF37]"
                 initial={{ x: "-100%" }}
                 animate={{ x: "100%" }}
-                transition={{ 
-                  duration: 8, // Mas matagal na load para sa cinematic feel
-                  repeat: Infinity, 
-                  ease: "easeInOut" 
-                }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
               />
            </div>
-           <span className="text-[9px] font-black uppercase tracking-[0.8em] text-white/20">
-             Curating Your Story
+           <span className="text-[10px] font-black uppercase tracking-[0.8em] text-white/30">
+             Developing Your Experience
            </span>
         </div>
       </div>
