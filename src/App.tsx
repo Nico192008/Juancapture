@@ -41,7 +41,7 @@ function AppContent() {
     // SAKTONG 8 SECONDS MASTER TIMER
     const timer = setTimeout(() => {
       setAppLoading(false);
-    }, 8000);
+    }, 5000);
     return () => clearTimeout(timer);
   }, []);
 
