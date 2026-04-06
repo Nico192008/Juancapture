@@ -2,85 +2,100 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 export const LoadingScreen = () => {
-  const photos = useMemo(() => [
-    '/images/loading/load-1.jpg',
-    '/images/loading/load-2.jpg',
-    '/images/loading/load-3.jpg',
-    '/images/loading/load-4.jpg',
-    '/images/loading/load-5.jpg',
-    '/images/loading/load-6.jpg',
-    '/images/loading/load-7.jpg',
-    '/images/loading/load-8.jpg',
-    '/images/loading/load-9.jpg',
-    '/images/loading/load-10.jpg',
-  ], []);
+  // Sinisiguro na ang 10 photos ay laging handa mula sa /images/loading/
+  const photos = useMemo(() => {
+    const totalPhotos = 10;
+    // Nag-generate ng array ng images mula /images/loading/load-1.jpg hanggang 10
+    return Array.from({ length: totalPhotos }, (_, i) => `/images/loading/load-${i + 1}.jpg`);
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505] overflow-hidden">
-      {/* Background Montage */}
-      <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 opacity-20 pointer-events-none">
-        {photos.map((src, index) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505] overflow-hidden selection:bg-gold/30">
+      
+      {/* --- LAYER 1: VERTICAL SCROLLING MONTAGE (Background) --- */}
+      <div className="absolute inset-0 flex gap-4 p-4 opacity-[0.15] pointer-events-none">
+        {[0, 1].map((column) => (
           <motion.div
-            key={`bg-photo-${index}`}
-            className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-white/5 border border-white/5 shadow-2xl"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 1, 0], y: [15, 0, -15] }}
-            transition={{ duration: 5, repeat: Infinity, delay: index * 0.2 }}
+            key={`column-${column}`}
+            className="flex flex-col gap-4 flex-1"
+            animate={{ y: [0, -1000] }} // Dahan-dahang umaakyat
+            transition={{ 
+              duration: 25 + column * 2, // Magkaiba ang bilis
+              repeat: Infinity, 
+              ease: "linear" 
+            }}
           >
-            <img src={src} alt="" className="w-full h-full object-cover" />
+            {[...photos, ...photos].map((src, index) => (
+              <div key={`${column}-${index}`} className="relative aspect-[3/4] rounded-xl overflow-hidden bg-white/5 border border-white/5 shadow-2xl">
+                <img src={src} alt="" className="w-full h-full object-cover" loading="eager" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+              </div>
+            ))}
           </motion.div>
         ))}
       </div>
 
+      {/* Cinematic Blur Overlay */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
 
-      {/* Luxury Logo Glow Section */}
+      {/* --- LAYER 2: CENTER LOGO & TEXT --- */}
       <div className="relative z-10 text-center px-6">
-        <div className="relative mb-12">
-          <div className="relative h-44 w-44 md:h-60 md:w-60 mx-auto">
-            {/* Glow Aura */}
-            <motion.div 
-              className="absolute inset-0 rounded-full bg-gold/20 blur-[50px]"
-              animate={{ opacity: [0.2, 0.5, 0.2], scale: [0.9, 1.1, 0.9] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            />
-            {/* Rotating Ring */}
-            <motion.div 
-              className="absolute inset-[-12px] rounded-full border border-gold/10 border-t-gold/60"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            />
-            {/* Logo Image */}
-            <div className="relative h-full w-full rounded-full overflow-hidden border-2 border-gold/30 p-2 bg-black shadow-[0_0_50px_rgba(212,175,55,0.2)]">
-              <motion.img
-                src="/1775314217196.jpg"
-                alt="Juan Captures"
-                className="h-full w-full object-cover rounded-full"
-                animate={{ filter: ['brightness(1)', 'brightness(1.2) drop-shadow(0 0 10px #D4AF37)', 'brightness(1)'] }}
-                transition={{ duration: 3, repeat: Infinity }}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {/* MAIN LOGO - Naka-style tulad ng Home header */}
+          <div className="relative mb-12">
+            <div className="relative h-48 w-48 md:h-64 md:w-64 mx-auto">
+              <motion.div 
+                className="absolute inset-[-12px] rounded-full border border-gold/10 border-t-gold/60 shadow-[0_0_20px_rgba(212,175,55,0.1)]"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
               />
+              <div className="h-full w-full rounded-full overflow-hidden border-2 border-gold/30 p-2 bg-black shadow-[0_0_60px_rgba(212,175,55,0.2)]">
+                <motion.img
+                  src="/1775314217196.jpg"
+                  alt="Juan Captures Official Logo"
+                  className="h-full w-full object-cover rounded-full"
+                  animate={{ filter: ['brightness(1)', 'brightness(1.2)', 'brightness(1)'] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="space-y-6">
-          <h1 className="text-4xl md:text-7xl font-playfair font-black text-white uppercase tracking-[0.3em]">
-            Juan <span className="italic text-gold/90">Captures</span>
-          </h1>
-          <div className="h-[1px] w-28 bg-gold/40 mx-auto shadow-[0_0_10px_#D4AF37]" />
-          <p className="text-gold font-vibes text-2xl md:text-5xl tracking-widest pt-2">Creating Visual Legacies</p>
-        </div>
+          <div className="space-y-6">
+            {/* BRAND NAME: Ginamit ang Playfair Display Font */}
+            <motion.h1
+              initial={{ opacity: 0, letterSpacing: "0.1em" }}
+              animate={{ opacity: 1, letterSpacing: "0.4em" }}
+              transition={{ delay: 1, duration: 2 }}
+              className="text-4xl md:text-7xl font-playfair font-black text-white uppercase tracking-tighter"
+            >
+              Juan <span className="italic text-gold/90">Captures</span>
+            </motion.h1>
+            
+            <div className="h-[1px] w-32 bg-gold/50 mx-auto mb-6 shadow-[0_0_15px_rgba(212,175,55,0.5)]" />
+            
+            {/* NEW MOTTO: Ginamit ang Great Vibes (Script) Font tulad ng sa image */}
+            <p className="text-gold font-vibes text-2xl md:text-5xl tracking-[0.1em] leading-none pt-2 opacity-90">
+              Capturing Moments, Creating Memories
+            </p>
+          </div>
+        </motion.div>
 
-        {/* Glowing Progress Bar */}
-        <div className="mt-20 flex flex-col items-center gap-4">
-           <div className="w-56 h-[1.5px] bg-white/5 relative overflow-hidden rounded-full">
+        {/* LOADING BAR */}
+        <div className="mt-24 flex flex-col items-center gap-4">
+           <div className="w-64 h-[1px] bg-white/10 relative overflow-hidden rounded-full">
               <motion.div
-                className="absolute inset-0 bg-gold shadow-[0_0_15px_#D4AF37]"
+                className="absolute inset-0 bg-gold shadow-[0_0_20px_#D4AF37]"
                 initial={{ x: "-100%" }}
                 animate={{ x: "100%" }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
               />
            </div>
+           <span className="text-[10px] font-black uppercase tracking-[0.6em] text-white/40">Preparing Gallery</span>
         </div>
       </div>
     </div>
