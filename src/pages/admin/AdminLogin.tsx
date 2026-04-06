@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { LogIn, AlertCircle, Loader } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { LogIn, AlertCircle, Loader2, ShieldCheck, ChevronLeft } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
 
 export const AdminLogin = () => {
@@ -25,17 +25,16 @@ export const AdminLogin = () => {
 
     try {
       if (!email || !password) {
-        throw new Error('Please fill in all fields');
+        throw new Error('All credentials are required to access the vault.');
       }
 
       await signIn(email, password);
       setTimeout(() => {
         navigate('/admin/dashboard');
       }, 500);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+    } catch (err: any) {
+      const errorMessage = err instanceof Error ? err.message : 'Access Denied: Invalid Credentials';
       setError(errorMessage);
-      console.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -43,122 +42,124 @@ export const AdminLogin = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-dark flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-gold" />
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-4">
+        <Loader2 className="animate-spin text-gold w-10 h-10" strokeWidth={1} />
+        <p className="text-[10px] uppercase tracking-[0.4em] text-gold/50 font-bold">Verifying Session</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-dark flex items-center justify-center px-6 py-20">
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6 relative overflow-hidden">
+      
+      {/* AMBIENT BACKGROUND ELEMENTS */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-gold/5 rounded-full blur-[120px]" />
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10" />
+      </div>
+
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-[440px] relative z-10"
       >
-        <div className="glass-strong p-8 rounded-lg">
-          <div className="text-center mb-8">
-            <motion.img
-              src="/1775314217196.jpg"
-              alt="Juan Captures"
-              /* UPDATED CLASSES BELOW: rounded-full makes it a circle, object-cover prevents stretching */
-              className="h-24 w-24 object-cover rounded-full mx-auto mb-4 border-2 border-gold/30"
-              animate={{
-                filter: [
-                  'drop-shadow(0 0 20px rgba(212, 175, 55, 0.4))',
-                  'drop-shadow(0 0 40px rgba(212, 175, 55, 0.6))',
-                  'drop-shadow(0 0 20px rgba(212, 175, 55, 0.4))',
-                ],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            />
-            <h1 className="text-3xl font-playfair font-bold text-white mb-2">
-              Admin Panel
+        <div className="glass-strong p-10 md:p-14 rounded-[3rem] border border-white/10 shadow-2xl backdrop-blur-2xl relative overflow-hidden">
+          
+          {/* HEADER SECTION */}
+          <div className="text-center mb-12">
+            <motion.div 
+              className="relative inline-block mb-6"
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <div className="absolute inset-0 bg-gold/20 blur-2xl rounded-full" />
+              <img
+                src="/1775314217196.jpg"
+                alt="Juan Captures"
+                className="h-24 w-24 object-cover rounded-full relative z-10 border-2 border-gold/40 shadow-2xl"
+              />
+            </motion.div>
+            
+            <h1 className="text-4xl font-playfair font-bold text-white tracking-tight">
+              Studio <span className="text-gold italic">Vault</span>
             </h1>
-            <p className="text-gold font-vibes text-xl">Juan Captures</p>
+            <p className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-bold mt-3">Admin Portal Access</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-white mb-2 text-sm font-medium">
-                Email Address
-              </label>
+            <div className="space-y-2">
+              <label className="block text-[10px] uppercase tracking-widest text-gold font-black ml-1">Identity (Email)</label>
               <input
                 type="email"
-                id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
-                className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold disabled:opacity-50"
-                placeholder="admin@example.com"
+                className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-all disabled:opacity-50"
+                placeholder="admin@juancaptures.com"
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-white mb-2 text-sm font-medium">
-                Password
-              </label>
+            <div className="space-y-2">
+              <label className="block text-[10px] uppercase tracking-widest text-gold font-black ml-1">Access Key (Password)</label>
               <input
                 type="password"
-                id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
-                className="w-full px-4 py-3 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold disabled:opacity-50"
-                placeholder="Enter your password"
+                className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-all disabled:opacity-50"
+                placeholder="••••••••••••"
               />
             </div>
 
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg flex items-start space-x-3"
-              >
-                <AlertCircle size={20} className="mt-0.5 flex-shrink-0" />
-                <p className="text-sm">{error}</p>
-              </motion.div>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl flex items-center gap-3 overflow-hidden"
+                >
+                  <AlertCircle size={18} className="shrink-0" />
+                  <p className="text-[11px] font-bold uppercase tracking-tight">{error}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full btn-gold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full group bg-white hover:bg-gold text-black py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] transition-all flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] disabled:opacity-50"
             >
               {isLoading ? (
-                <>
-                  <Loader size={20} className="animate-spin" />
-                  <span>Logging in...</span>
-                </>
+                <Loader2 size={18} className="animate-spin" />
               ) : (
                 <>
-                  <LogIn size={20} />
-                  <span>Admin Login</span>
+                  <LogIn size={18} className="group-hover:translate-x-1 transition-transform" />
+                  <span>Authenticate Access</span>
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-white/10">
-            <p className="text-center text-gray-400 text-sm">
-              Protected admin area. Only authorized personnel.
-            </p>
+          {/* FOOTER LOG */}
+          <div className="mt-12 pt-8 border-t border-white/5 flex flex-col items-center gap-2">
+             <div className="flex items-center gap-2 text-gray-600">
+                <ShieldCheck size={14} className="text-gold/40" />
+                <span className="text-[9px] font-bold uppercase tracking-widest">End-to-End Encryption Active</span>
+             </div>
           </div>
         </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="mt-8 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="mt-10 text-center"
         >
-          <a href="/" className="text-gold hover:text-gold-light transition-colors">
-            ← Back to Home
+          <a href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gold transition-all text-[10px] font-bold uppercase tracking-widest">
+            <ChevronLeft size={14} /> Back to Gallery
           </a>
         </motion.div>
       </motion.div>
