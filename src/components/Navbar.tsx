@@ -68,7 +68,7 @@ export const Navbar = () => {
                   Juan<span className="italic text-gold/90">Captures</span>
                 </span>
                 <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.4em] text-gold/60 mt-1">
-                  Est. 2026
+                  Est. 2018
                 </span>
               </div>
             </Link>
