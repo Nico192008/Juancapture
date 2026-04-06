@@ -229,7 +229,7 @@ export const AdminDashboard = () => {
           <Link to="/admin/albums" className="group bg-[#0d0d0d] p-10 rounded-[2.5rem] border border-white/5 hover:border-blue-500/30 transition-all flex flex-col justify-between relative overflow-hidden">
             <ImageIcon className="text-blue-500 group-hover:scale-110 transition-transform" size={32} />
             <div>
-              <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Image Vault</h3>
+              <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Manage Albums</h3>
               <div className="text-5xl font-bold tracking-tighter">{stats.albums}</div>
             </div>
           </Link>
@@ -237,7 +237,7 @@ export const AdminDashboard = () => {
           <Link to="/admin/videos" className="group bg-[#0d0d0d] p-10 rounded-[2.5rem] border border-white/5 hover:border-purple-500/30 transition-all flex flex-col justify-between relative overflow-hidden">
             <Video className="text-purple-500 group-hover:scale-110 transition-transform" size={32} />
             <div>
-              <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Cinema Hub</h3>
+              <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Manage Videos</h3>
               <div className="text-5xl font-bold tracking-tighter">{stats.videos}</div>
             </div>
           </Link>
