@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 export const LoadingScreen = () => {
+  // OPTIMIZATION: useMemo para iwas Hydration Error sa Vercel
   const photos = useMemo(() => {
     const totalPhotos = 10;
     return Array.from({ length: totalPhotos }, (_, i) => `/images/loading/load-${i + 1}.jpg`);
@@ -9,7 +10,7 @@ export const LoadingScreen = () => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505] overflow-hidden">
-      {/* Background Montage */}
+      {/* LAYER 1: PORTFOLIO MONTAGE (Background) */}
       <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 opacity-20 pointer-events-none">
         {photos.map((src, index) => (
           <motion.div
@@ -21,9 +22,15 @@ export const LoadingScreen = () => {
               y: [20, 0, -20],
               scale: [0.95, 1, 1.05]
             }}
-            transition={{ duration: 4, repeat: Infinity, delay: index * 0.4, ease: "easeInOut" }}
+            transition={{ 
+              duration: 4,
+              repeat: Infinity, 
+              repeatDelay: 0.5,
+              delay: index * 0.4,
+              ease: "easeInOut" 
+            }}
           >
-            <img src={src} alt="" className="w-full h-full object-cover" />
+            <img src={src} alt="" className="w-full h-full object-cover" loading="eager" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
           </motion.div>
         ))}
@@ -31,45 +38,66 @@ export const LoadingScreen = () => {
 
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]" />
 
-      {/* Main Content Reveal */}
+      {/* LAYER 2: LOGO & BRAND REVEAL (Foreground) */}
       <div className="relative z-10 text-center px-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
         >
-          {/* LOGO */}
+          {/* MAIN LOGO - /1775314217196.jpg */}
           <div className="relative mb-12">
             <div className="relative h-48 w-48 md:h-64 md:w-64 mx-auto">
+              {/* Rotating Gold Ring */}
               <motion.div 
-                className="absolute inset-[-12px] rounded-full border border-gold/20 border-t-gold/60"
+                className="absolute inset-[-12px] rounded-full border border-gold/10 border-t-gold/60 shadow-[0_0_20px_rgba(212,175,55,0.1)]"
                 animate={{ rotate: 360 }}
                 transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
               />
-              <div className="h-full w-full rounded-full overflow-hidden border-2 border-gold/30 p-2 bg-black">
-                <img src="/1775314217196.jpg" alt="Logo" className="h-full w-full object-cover rounded-full" />
+              
+              <div className="h-full w-full rounded-full overflow-hidden border-2 border-gold/30 p-2 bg-black shadow-[0_0_60px_rgba(212,175,55,0.2)]">
+                <motion.img
+                  src="/1775314217196.jpg"
+                  alt="Juan Captures Official Logo"
+                  className="h-full w-full object-cover rounded-full"
+                  animate={{ filter: ['brightness(1)', 'brightness(1.2)', 'brightness(1)'] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                />
               </div>
             </div>
           </div>
 
           <div className="space-y-6">
-            <h1 className="text-4xl md:text-7xl font-playfair font-black text-white uppercase tracking-[0.4em]">
-              Juan <span className="italic text-gold">Captures</span>
-            </h1>
-            <p className="text-gold font-vibes text-2xl md:text-5xl tracking-widest leading-none">Creating Visual Legacies</p>
+            <motion.h1
+              initial={{ opacity: 0, letterSpacing: "0.1em" }}
+              animate={{ opacity: 1, letterSpacing: "0.4em" }}
+              transition={{ delay: 1, duration: 2 }}
+              className="text-4xl md:text-7xl font-playfair font-black text-white uppercase tracking-tighter"
+            >
+              Juan <span className="italic text-gold/90">Captures</span>
+            </motion.h1>
+            
+            <div className="h-[1px] w-32 bg-gold/50 mx-auto mb-6 shadow-[0_0_15px_rgba(212,175,55,0.5)]" />
+            
+            <p className="text-gold font-vibes text-2xl md:text-5xl tracking-[0.1em] leading-none">
+              Creating Visual Legacies
+            </p>
           </div>
         </motion.div>
 
-        {/* LOADING BAR */}
+        {/* LOADING BAR (Sync with 8s timer) */}
         <div className="mt-24 flex flex-col items-center gap-4">
-           <div className="w-64 h-[1px] bg-white/10 relative overflow-hidden">
+           <div className="w-64 h-[1px] bg-white/10 relative overflow-hidden rounded-full">
               <motion.div
-                className="absolute inset-0 bg-gold"
+                className="absolute inset-0 bg-gold shadow-[0_0_20px_#D4AF37]"
                 initial={{ x: "-100%" }}
                 animate={{ x: "100%" }}
                 transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
               />
            </div>
+           <span className="text-[10px] font-black uppercase tracking-[0.6em] text-white/40">
+             Curating Your Experience
+           </span>
         </div>
       </div>
     </div>
