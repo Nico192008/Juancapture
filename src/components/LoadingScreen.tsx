@@ -12,7 +12,7 @@ export const LoadingScreen = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      setIsLoading(true);
     }, 8000); // 8 Seconds Loading
 
     return () => clearTimeout(timer);
