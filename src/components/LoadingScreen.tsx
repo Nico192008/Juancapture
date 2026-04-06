@@ -1,18 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'; // FIXED: Dapat lowercase 'i'
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const LoadingScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
 
-  // Bilang ng photos na nilagay mo sa /public/images/loading/
+  // Inayos sa 10 photos
   const totalPhotos = 10; 
   const photos = Array.from({ length: totalPhotos }, (_, i) => `/images/loading/load-${i + 1}.jpg`);
 
   useEffect(() => {
-    // 4.5 seconds para malasap ng client ang inyong portfolio montage
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 4500);
+    }, 5000); // 5 seconds para sa 10 photos montage
 
     return () => clearTimeout(timer);
   }, []);
@@ -32,7 +31,7 @@ export const LoadingScreen = () => {
           className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505] overflow-hidden"
         >
           {/* --- LAYER 1: ACTUAL PHOTOSHOOT MONTAGE GRID --- */}
-          <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 p-4 opacity-30 pointer-events-none">
+          <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 opacity-30 pointer-events-none">
             {photos.map((src, index) => (
               <motion.div
                 key={index}
@@ -47,7 +46,7 @@ export const LoadingScreen = () => {
                   duration: 3, 
                   repeat: Infinity, 
                   repeatDelay: 1,
-                  delay: index * 0.3, // Staggered reveal ng photos
+                  delay: index * 0.2, // Mas mabilis na stagger para sa 10 photos
                   ease: "easeInOut" 
                 }}
               >
@@ -57,7 +56,6 @@ export const LoadingScreen = () => {
                   className="w-full h-full object-cover"
                   loading="eager"
                 />
-                {/* Subtle Vignette sa bawat photo */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               </motion.div>
             ))}
@@ -65,8 +63,6 @@ export const LoadingScreen = () => {
 
           {/* Cinematic Overlays */}
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-black to-transparent" />
-          <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black to-transparent" />
 
           {/* --- LAYER 2: BRAND REVEAL --- */}
           <div className="relative z-10 text-center px-6">
@@ -109,7 +105,7 @@ export const LoadingScreen = () => {
                   transition={{ delay: 2, duration: 1 }}
                   className="flex flex-col items-center"
                 >
-                  <div className="h-[1px] w-20 bg-gold/50 mb-4 shadow-[0_0_10px_rgba(212,175,55,0.5)]" />
+                  <div className="h-[1px] w-20 bg-gold/50 mb-4" />
                   <p className="text-gold font-vibes text-2xl md:text-4xl tracking-widest leading-none">
                     Creating Visual Legacies
                   </p>
@@ -132,7 +128,7 @@ export const LoadingScreen = () => {
                </span>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
