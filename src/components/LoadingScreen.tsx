@@ -5,7 +5,7 @@ export const LoadingScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Bilang ng photos na nilagay mo sa /public/images/loading/
-  const totalPhotos = 8; 
+  const totalPhotos = 10; 
   const photos = Array.from({ length: totalPhotos }, (_, i) => `/images/loading/load-${i + 1}.jpg`);
 
   useEffect(() => {
