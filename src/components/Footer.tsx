@@ -44,7 +44,7 @@ export const Footer = () => {
                   Juan <span className="italic text-gold/90">Captures</span>
                 </h3>
                 <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.4em] text-gold/60">
-                  Est. 2026
+                  Est. 2018
                 </p>
               </div>
             </Link>
