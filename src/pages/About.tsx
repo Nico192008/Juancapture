@@ -51,7 +51,7 @@ export const About = () => {
             {/* EST Badge - Adjusted for Mobile */}
             <div className="absolute -bottom-4 -right-2 md:-bottom-6 md:-right-6 bg-gold p-5 md:p-8 rounded-xl md:rounded-2xl shadow-2xl">
                <span className="text-black font-black text-2xl md:text-4xl font-mono tracking-tighter">EST.</span>
-               <p className="text-black font-bold text-sm md:text-lg mt-0 md:mt-1 text-center">2024</p>
+               <p className="text-black font-bold text-sm md:text-lg mt-0 md:mt-1 text-center">2018</p>
             </div>
           </motion.div>
 
