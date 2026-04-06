@@ -10,7 +10,7 @@ export const LoadingScreen = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsLoading(false);
+      setIsLoading(true);
     }, 5000); // 5 seconds para sa 10 photos montage
 
     return () => clearTimeout(timer);
