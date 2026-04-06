@@ -12,12 +12,22 @@ import {
   Loader2,
   Layers,
   ChevronRight,
-  Trash2,
-  ArrowUpRight,
-  FileImage
+  ArrowUpRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
+
+// Define explicit types para sa Album at Photo
+interface Album {
+  id: string;
+  name: string;
+}
+
+interface Photo {
+  id: string;
+  image_url: string;
+  album_id: string;
+}
 
 export const AdminDashboard = () => {
   const { user, isAdmin, signOut, loading: authLoading } = useAuthContext();
@@ -25,18 +35,16 @@ export const AdminDashboard = () => {
   
   const [currentTime, setCurrentTime] = useState(new Date());
   const [stats, setStats] = useState({ albums: 0, videos: 0, bookings: 0 });
-  const [albumsList, setAlbumsList] = useState<{id: string, name: string}[]>([]);
+  const [albumsList, setAlbumsList] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Modal & Form States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [postType, setPostType] = useState<'image' | 'video'>('image');
   const [submitting, setSubmitting] = useState(false);
-  const [selectedAlbum, setSelectedAlbum] = useState<{id: string, name: string} | null>(null);
-  const [albumPhotos, setAlbumPhotos] = useState<any[]>([]);
+  const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
+  const [albumPhotos, setAlbumPhotos] = useState<Photo[]>([]);
   const [fetchingPhotos, setFetchingPhotos] = useState(false);
   
-  // MULTIPLE FILES STATE
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState('');
@@ -55,23 +63,24 @@ export const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [albums, vids, bookings] = await Promise.all([
+      const [albumsRes, vidsRes, bookingsRes] = await Promise.all([
         supabase.from('albums').select('id, name').order('created_at', { ascending: false }),
         supabase.from('videos').select('id', { count: 'exact', head: true }),
         supabase.from('bookings').select('id', { count: 'exact', head: true }),
       ]);
-      setAlbumsList(albums.data || []);
+      
+      setAlbumsList(albumsRes.data || []);
       setStats({ 
-        albums: albums.data?.length || 0, 
-        videos: vids.count || 0, 
-        bookings: bookings.count || 0 
+        albums: albumsRes.data?.length || 0, 
+        videos: vidsRes.count || 0, 
+        bookings: bookingsRes.count || 0 
       });
     } catch (err) {
       console.error("Fetch Error:", err);
     } finally { setLoading(false); }
   };
 
-  const openAlbumPreview = async (album: {id: string, name: string}) => {
+  const openAlbumPreview = async (album: Album) => {
     setSelectedAlbum(album);
     setFetchingPhotos(true);
     const { data } = await supabase.from('images').select('*').eq('album_id', album.id);
@@ -99,8 +108,9 @@ export const AdminDashboard = () => {
       const uploadFile = async (file: File, folder: string) => {
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
         const filePath = `${folder}/${fileName}`;
-        const { error } = await supabase.storage.from('portfolio').upload(filePath, file);
-        if (error) throw error;
+        const { error: uploadError } = await supabase.storage.from('portfolio').upload(filePath, file);
+        if (uploadError) throw uploadError;
+        
         const { data } = supabase.storage.from('portfolio').getPublicUrl(filePath);
         return data.publicUrl;
       };
@@ -111,23 +121,24 @@ export const AdminDashboard = () => {
           return { album_id: selectedAlbumId, image_url: url, caption: '' };
         });
         const results = await Promise.all(uploadPromises);
-        const { error } = await supabase.from('images').insert(results);
-        if (error) throw error;
+        const { error: insertError } = await supabase.from('images').insert(results);
+        if (insertError) throw insertError;
       } else {
         if (!thumbnailFile) throw new Error("Thumbnail required for video");
         const [vUrl, tUrl] = await Promise.all([
           uploadFile(selectedFiles[0], 'videos'), 
           uploadFile(thumbnailFile, 'thumbnails')
         ]);
-        const { error } = await supabase.from('videos').insert([{ title, video_url: vUrl, thumbnail_url: tUrl }]);
-        if (error) throw error;
+        const { error: vidError } = await supabase.from('videos').insert([{ title, video_url: vUrl, thumbnail_url: tUrl }]);
+        if (vidError) throw vidError;
       }
       
       resetForm();
       fetchDashboardData();
       alert("Successfully Published!");
-    } catch (err: any) { 
-      alert(err.message); 
+    } catch (err: unknown) { 
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+      alert(errorMessage); 
     } finally { 
       setSubmitting(false); 
     }
@@ -144,16 +155,15 @@ export const AdminDashboard = () => {
   if (loading || authLoading) return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center">
       <Loader2 className="animate-spin text-amber-500 mb-4" size={40} />
-      <p className="text-white font-mono text-xs tracking-widest uppercase">System Loading...</p>
+      <p className="text-white font-mono text-xs tracking-widest uppercase text-center">System Loading...</p>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden selection:bg-amber-500/30">
-      
       <div className="relative z-10 max-w-7xl mx-auto pt-10 md:pt-20 px-6 pb-20">
         
-        {/* HEADER SECTION */}
+        {/* HEADER */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div>
             <h1 className="text-4xl md:text-6xl font-serif font-bold tracking-tighter mb-2">
@@ -177,55 +187,44 @@ export const AdminDashboard = () => {
           </div>
         </header>
 
-        {/* BENTO GRID - FIXED CLICKABLE CARDS */}
+        {/* BENTO GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-12">
-          
-          {/* BOOKINGS CARD (Full Width on Mobile) */}
-          <Link 
-            to="/admin/bookings" 
-            className="md:col-span-2 group bg-[#0d0d0d] p-8 rounded-[2rem] border border-white/5 hover:border-amber-500/30 transition-all duration-300 flex flex-col justify-between min-h-[200px]"
-          >
+          <Link to="/admin/bookings" className="md:col-span-2 group bg-[#0d0d0d] p-8 rounded-[2rem] border border-white/5 hover:border-amber-500/30 transition-all min-h-[200px] flex flex-col justify-between">
             <Calendar className="text-amber-500" size={32} />
             <div>
               <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Bookings</h3>
-              <div className="text-6xl font-bold">{stats.bookings}</div>
+              <div className="text-6xl font-bold tracking-tighter">{stats.bookings}</div>
+              <div className="mt-2 flex items-center text-[10px] text-amber-500 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                Manage Schedule <ArrowUpRight size={12} className="ml-1"/>
+              </div>
             </div>
           </Link>
 
-          {/* ALBUMS CARD - FIXED REDIRECTION */}
-          <Link 
-            to="/admin/albums" 
-            className="group bg-[#0d0d0d] p-8 rounded-[2rem] border border-white/5 hover:border-blue-500/30 transition-all duration-300 flex flex-col justify-between min-h-[200px]"
-          >
+          <Link to="/admin/albums" className="group bg-[#0d0d0d] p-8 rounded-[2rem] border border-white/5 hover:border-blue-500/30 transition-all min-h-[200px] flex flex-col justify-between">
             <ImageIcon className="text-blue-500" size={32} />
             <div>
               <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Albums</h3>
-              <div className="text-6xl font-bold">{stats.albums}</div>
+              <div className="text-6xl font-bold tracking-tighter">{stats.albums}</div>
             </div>
           </Link>
 
-          {/* VIDEOS CARD - FIXED REDIRECTION */}
-          <Link 
-            to="/admin/videos" 
-            className="group bg-[#0d0d0d] p-8 rounded-[2rem] border border-white/5 hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between min-h-[200px]"
-          >
+          <Link to="/admin/videos" className="group bg-[#0d0d0d] p-8 rounded-[2rem] border border-white/5 hover:border-purple-500/30 transition-all min-h-[200px] flex flex-col justify-between">
             <Video className="text-purple-500" size={32} />
             <div>
               <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Videos</h3>
-              <div className="text-6xl font-bold">{stats.videos}</div>
+              <div className="text-6xl font-bold tracking-tighter">{stats.videos}</div>
             </div>
           </Link>
-
         </div>
 
-        {/* RECENT ARCHIVES SECTION */}
+        {/* RECENT ARCHIVES */}
         <section className="bg-[#0d0d0d] p-6 md:p-10 rounded-[2.5rem] border border-white/5">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <Layers className="text-amber-500" size={24} />
               <h3 className="text-xl font-bold tracking-tight">Recent Archives</h3>
             </div>
-            <Link to="/admin/albums" className="text-[10px] font-bold uppercase text-gray-500 hover:text-white transition-colors">See All</Link>
+            <Link to="/admin/albums" className="text-[10px] font-bold uppercase text-gray-400 hover:text-white transition-colors">See All</Link>
           </div>
           
           <div className="space-y-3">
@@ -242,32 +241,30 @@ export const AdminDashboard = () => {
           </div>
         </section>
 
-        {/* MODAL: CREATE NEW POST (MULTIPLE UPLOAD) */}
+        {/* CREATE MODAL */}
         <AnimatePresence>
           {showCreateModal && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
-              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#0d0d0d] w-full max-w-lg p-8 md:p-10 rounded-[2.5rem] border border-white/10 max-h-[90vh] overflow-y-auto">
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#0d0d0d] w-full max-w-lg p-8 rounded-[2.5rem] border border-white/10 max-h-[90vh] overflow-y-auto custom-scrollbar">
                 <div className="flex justify-between items-center mb-8">
                   <h2 className="text-2xl font-bold">New Post</h2>
-                  <button onClick={resetForm} className="text-gray-500 hover:text-white"><X /></button>
+                  <button onClick={resetForm} className="text-gray-500 hover:text-white transition-colors"><X /></button>
                 </div>
                 
                 <form onSubmit={handleCreatePost} className="space-y-6">
-                  {/* TYPE PICKER */}
-                  <div className="flex p-1.5 bg-white/5 rounded-xl">
-                    {['image', 'video'].map((type) => (
+                  <div className="flex p-1 bg-white/5 rounded-xl">
+                    {(['image', 'video'] as const).map((type) => (
                       <button 
                         key={type} 
                         type="button" 
-                        onClick={() => {setPostType(type as any); setSelectedFiles([]);}} 
-                        className={`flex-1 py-3 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all ${postType === type ? 'bg-amber-500 text-black' : 'text-gray-500'}`}
+                        onClick={() => {setPostType(type); setSelectedFiles([]);}} 
+                        className={`flex-1 py-3 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all ${postType === type ? 'bg-amber-500 text-black' : 'text-gray-500 hover:text-gray-300'}`}
                       >
                         {type}
                       </button>
                     ))}
                   </div>
 
-                  {/* DYNAMIC FORM */}
                   {postType === 'image' ? (
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Album Destination</label>
@@ -280,12 +277,11 @@ export const AdminDashboard = () => {
                   ) : (
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Video Title</label>
-                      <input required type="text" placeholder="Cinematic Title..." className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm outline-none focus:border-amber-500 transition-all"
+                      <input required type="text" placeholder="Cinematic Title..." className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm outline-none focus:border-amber-500"
                         value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
                   )}
 
-                  {/* FILE DROPZONE */}
                   <div className="relative border-2 border-dashed border-white/10 rounded-2xl p-10 text-center hover:border-amber-500/50 transition-all bg-white/5 group">
                     <input 
                       type="file" 
@@ -300,13 +296,12 @@ export const AdminDashboard = () => {
                     </p>
                   </div>
 
-                  {/* MULTIPLE PREVIEW GALLERY */}
                   {selectedFiles.length > 0 && (
                     <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-2 bg-black/40 rounded-xl border border-white/5">
                       {selectedFiles.map((file, idx) => (
-                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-white/10">
+                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 bg-white/5">
                           {file.type.startsWith('image') ? (
-                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="" />
+                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="preview" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center"><Video size={16} /></div>
                           )}
@@ -317,20 +312,49 @@ export const AdminDashboard = () => {
                   
                   {postType === 'video' && (
                     <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between">
-                       <span className="text-[10px] font-bold text-gray-500 uppercase">{thumbnailFile ? thumbnailFile.name : "Cover Image"}</span>
-                       <input type="file" accept="image/*" className="w-20 text-[10px]" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
+                       <span className="text-[10px] font-bold text-gray-500 uppercase truncate max-w-[150px]">
+                         {thumbnailFile ? thumbnailFile.name : "Cover Image"}
+                       </span>
+                       <input type="file" accept="image/*" className="w-24 text-[10px]" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
                     </div>
                   )}
 
                   <button 
                     disabled={submitting || selectedFiles.length === 0} 
                     type="submit" 
-                    className="w-full bg-amber-500 text-black py-4 rounded-xl font-bold uppercase text-xs tracking-[0.2em] shadow-lg shadow-amber-500/10 active:scale-[0.98] transition-all disabled:opacity-30"
+                    className="w-full bg-amber-500 text-black py-4 rounded-xl font-bold uppercase text-xs tracking-[0.2em] shadow-lg shadow-amber-500/10 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     {submitting ? <Loader2 className="animate-spin mx-auto" /> : "Publish to Portfolio"}
                   </button>
                 </form>
               </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* ALBUM PREVIEW MODAL */}
+        <AnimatePresence>
+          {selectedAlbum && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
+              <div className="bg-[#0d0d0d] w-full max-w-4xl p-8 rounded-[2.5rem] border border-white/10 max-h-[90vh] overflow-hidden flex flex-col">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">{selectedAlbum.name}</h2>
+                  <button onClick={() => setSelectedAlbum(null)} className="text-gray-500 hover:text-white"><X /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                  {fetchingPhotos ? (
+                    <div className="flex justify-center p-10"><Loader2 className="animate-spin text-amber-500" /></div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {albumPhotos.map((photo) => (
+                        <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden border border-white/5 group">
+                          <img src={photo.image_url} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt="" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </AnimatePresence>
