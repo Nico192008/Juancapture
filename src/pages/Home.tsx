@@ -101,7 +101,7 @@ export const Home = () => {
               
               {/* --- GLOWING BOOKING BUTTON --- */}
               <Link to="/booking" className="w-full sm:w-auto relative px-8 md:px-10 py-4 md:py-5 rounded-full font-bold text-[10px] md:text-xs uppercase tracking-widest border border-gold/40 text-gold hover:text-black hover:bg-gold transition-all duration-500 bg-black/40 backdrop-blur-md flex justify-center shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_40px_rgba(212,175,55,0.6)]">
-                Reserve Session
+                Book Now
               </Link>
             </motion.div>
           </motion.div>
