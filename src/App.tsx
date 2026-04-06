@@ -34,12 +34,12 @@ function Layout({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const [appIsLoading, setAppIsLoading] = useState(true);
+  const [appLoading, setAppLoading] = useState(true);
 
   useEffect(() => {
-    // SAKTONG 8 SECONDS MASTER TIMER
+    // SAKTONG 8 SECONDS
     const timer = setTimeout(() => {
-      setAppIsLoading(false);
+      setAppLoading(false);
     }, 8000);
     return () => clearTimeout(timer);
   }, []);
@@ -47,15 +47,13 @@ function AppContent() {
   return (
     <div className="bg-[#050505] min-h-screen">
       <AnimatePresence mode="wait">
-        {appIsLoading ? (
+        {appLoading ? (
           <motion.div
-            key="loading-screen-wrapper"
-            initial={{ opacity: 1, scale: 1 }}
+            key="simple-fade-loader"
+            initial={{ opacity: 1 }}
             exit={{ 
               opacity: 0, 
-              scale: 0.85, // CINEMATIC ZOOM OUT (Paliit)
-              filter: "blur(20px)",
-              transition: { duration: 1.5, ease: [0.65, 0, 0.35, 1] } 
+              transition: { duration: 1.2, ease: "easeInOut" } // CLEAN FADE ONLY
             }}
             className="fixed inset-0 z-[100]"
           >
@@ -63,10 +61,10 @@ function AppContent() {
           </motion.div>
         ) : (
           <motion.div
-            key="home-content-wrapper"
-            initial={{ opacity: 0, scale: 1.15, filter: "blur(10px)" }} // CINEMATIC ZOOM IN (Mula malaki papuntang normal)
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            transition={{ duration: 1.8, ease: "easeOut" }}
+            key="home-fade-in"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.5, ease: "easeOut" }} // CLEAN FADE IN
           >
             <Layout>
               <Routes>
