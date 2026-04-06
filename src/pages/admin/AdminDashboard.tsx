@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,13 +11,15 @@ import {
   Upload,
   Loader2,
   LayoutGrid,
+  Clock,
   ChevronRight,
   Trash2,
-  Layers,
-  ArrowUpRight,
-  Sparkles,
   Play,
-  Clock
+  Layers,
+  Edit2,
+  Check,
+  Settings,
+  ArrowUpRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -26,130 +28,91 @@ export const AdminDashboard = () => {
   const { user, isAdmin, signOut, loading: authLoading } = useAuthContext();
   const navigate = useNavigate();
   
-  // -- SYSTEM STATES --
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ albums: 0, videos: 0, bookings: 0 });
+  const [albumsList, setAlbumsList] = useState<{id: string, name: string}[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // -- DATA LISTS --
-  const [albumsList, setAlbumsList] = useState<any[]>([]);
-  const [videosList, setVideosList] = useState<any[]>([]);
-  const [recentBookings, setRecentBookings] = useState<any[]>([]);
-  
-  // -- UI CONTROL --
+  // Modal & Form States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [postType, setPostType] = useState<'image' | 'video'>('image');
   const [submitting, setSubmitting] = useState(false);
-  const [selectedAlbum, setSelectedAlbum] = useState<any | null>(null);
+  const [selectedAlbum, setSelectedAlbum] = useState<{id: string, name: string} | null>(null);
   const [albumPhotos, setAlbumPhotos] = useState<any[]>([]);
   const [fetchingPhotos, setFetchingPhotos] = useState(false);
-  
-  // -- FORM STATES --
+  const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
+  const [newCaption, setNewCaption] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState('');
   const [title, setTitle] = useState('');
 
-  // --- 1. DATA FETCHING (Dito ibinabalik ang Album at Video functions) ---
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      const [albumsRes, videosRes, bookingsRes] = await Promise.all([
-        supabase.from('albums').select('*').order('created_at', { ascending: false }),
-        supabase.from('videos').select('*').order('created_at', { ascending: false }),
-        supabase.from('bookings').select('*').order('created_at', { ascending: false }).limit(5)
-      ]);
-
-      if (albumsRes.error) throw albumsRes.error;
-      if (videosRes.error) throw videosRes.error;
-
-      setAlbumsList(albumsRes.data || []);
-      setVideosList(videosRes.data || []);
-      setRecentBookings(bookingsRes.data || []);
-      
-      setStats({ 
-        albums: albumsRes.data?.length || 0, 
-        videos: videosRes.data?.length || 0, 
-        bookings: bookingsRes.count || 0 
-      });
-    } catch (err) {
-      console.error("Fetch Error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    if (!authLoading) {
-      if (!user || !isAdmin) {
-        navigate('/admin/login');
-      } else {
-        fetchDashboardData();
-      }
+    if (authLoading) return;
+    if (!user || !isAdmin) {
+      navigate('/admin/login');
+      return;
     }
+    fetchDashboardData();
     return () => clearInterval(timer);
-  }, [user, isAdmin, navigate, authLoading, fetchDashboardData]);
+  }, [user, isAdmin, navigate, authLoading]);
 
-  // --- 2. ALBUM & PHOTO ACTIONS ---
-  const openAlbum = async (album: any) => {
+  const fetchDashboardData = async () => {
+    try {
+      const [albums, vids, bookings] = await Promise.all([
+        supabase.from('albums').select('id, name').order('created_at', { ascending: false }),
+        supabase.from('videos').select('id', { count: 'exact', head: true }),
+        supabase.from('bookings').select('id', { count: 'exact', head: true }),
+      ]);
+      setAlbumsList(albums.data || []);
+      setStats({ 
+        albums: albums.data?.length || 0, 
+        videos: vids.count || 0, 
+        bookings: bookings.count || 0 
+      });
+    } finally { setLoading(false); }
+  };
+
+  const openAlbum = async (album: {id: string, name: string}) => {
     setSelectedAlbum(album);
     setFetchingPhotos(true);
-    try {
-      const { data } = await supabase.from('images').select('*').eq('album_id', album.id).order('created_at', { ascending: false });
-      setAlbumPhotos(data || []);
-    } finally {
-      setFetchingPhotos(false);
-    }
+    const { data } = await supabase.from('images').select('*').eq('album_id', album.id);
+    setAlbumPhotos(data || []);
+    setFetchingPhotos(false);
   };
 
   const deletePhoto = async (id: string, url: string) => {
-    if(!confirm("Permanteng buburahin ang file sa Storage at Database. Ituloy?")) return;
+    if(!confirm("Are you sure you want to delete this memory?")) return;
     try {
-      const path = url.split('/portfolio/')[1];
-      if (path) await supabase.storage.from('portfolio').remove([path]);
+      const path = url.split('/').pop();
+      await supabase.storage.from('portfolio').remove([`images/${path}`]);
       await supabase.from('images').delete().eq('id', id);
       setAlbumPhotos(prev => prev.filter(p => p.id !== id));
-      fetchDashboardData();
-    } catch (err) { alert("Delete failed."); }
+    } catch (err) { alert("Delete failed"); }
   };
 
-  const deleteVideo = async (id: string, vUrl: string, tUrl: string) => {
-    if(!confirm("Buburahin ang video na ito. Ituloy?")) return;
-    try {
-      const vPath = vUrl.split('/portfolio/')[1];
-      const tPath = tUrl.split('/portfolio/')[1];
-      if (vPath) await supabase.storage.from('portfolio').remove([vPath]);
-      if (tPath) await supabase.storage.from('portfolio').remove([tPath]);
-      await supabase.from('videos').delete().eq('id', id);
-      fetchDashboardData();
-    } catch (err) { alert("Video delete failed."); }
-  };
-
-  // --- 3. UPLOAD LOGIC ---
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) return;
     setSubmitting(true);
-
     try {
-      const uploadFile = async (file: File, folder: string) => {
-        const ext = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-        const path = `${folder}/${fileName}`;
-        const { error } = await supabase.storage.from('portfolio').upload(path, file);
+      const uploadToBucket = async (file: File, folder: string) => {
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        const filePath = `${folder}/${fileName}`;
+        const { error } = await supabase.storage.from('portfolio').upload(filePath, file);
         if (error) throw error;
-        return supabase.storage.from('portfolio').getPublicUrl(path).data.publicUrl;
+        return supabase.storage.from('portfolio').getPublicUrl(filePath).data.publicUrl;
       };
 
       if (postType === 'image') {
-        if (!selectedAlbumId) throw new Error("Pumili ng Album.");
-        const url = await uploadFile(selectedFile, 'images');
-        await supabase.from('images').insert([{ album_id: selectedAlbumId, image_url: url, caption: title || 'Untitled' }]);
+        const url = await uploadToBucket(selectedFile, 'images');
+        await supabase.from('images').insert([{ album_id: selectedAlbumId, image_url: url, caption: '' }]);
       } else {
-        if (!thumbnailFile) throw new Error("Kailangan ng Cover Image para sa Video.");
+        if (!thumbnailFile) throw new Error("Thumbnail required");
         const [vUrl, tUrl] = await Promise.all([
-          uploadFile(selectedFile, 'videos'),
-          uploadFile(thumbnailFile, 'thumbnails')
+          uploadToBucket(selectedFile, 'videos'), 
+          uploadToBucket(thumbnailFile, 'thumbnails')
         ]);
         await supabase.from('videos').insert([{ title, video_url: vUrl, thumbnail_url: tUrl }]);
       }
@@ -167,130 +130,146 @@ export const AdminDashboard = () => {
   };
 
   if (loading || authLoading) return (
-    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-6">
-      <Loader2 className="animate-spin text-gold w-12 h-12" />
-      <p className="text-[10px] uppercase tracking-[0.5em] text-gold/50 font-black">Juan Captures Engine Syncing...</p>
+    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-4">
+      <Loader2 className="animate-spin text-gold w-8 h-8" />
+      <p className="text-[10px] uppercase tracking-[0.3em] text-gold/50 font-bold">Initializing Studio</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pb-20">
-      {/* Background Ambience */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-gold/5 rounded-full blur-[150px]" />
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-gold/30">
+      {/* BACKGROUND ORBS */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-white/5 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative z-10 container mx-auto pt-24 px-6">
+      <div className="relative z-10 container-custom pt-32 pb-20 px-6">
         
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-            <h1 className="text-5xl md:text-7xl font-playfair font-bold tracking-tighter">
+        {/* TOP NAVIGATION BAR-LIKE HEADER */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-8">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <h1 className="text-6xl font-playfair font-bold tracking-tighter mb-2">
               Studio <span className="text-gold italic">Control</span>
             </h1>
-            <div className="mt-4 flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 rounded-2xl w-fit">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute h-full w-full rounded-full bg-gold opacity-75"></span>
+            <div className="flex items-center gap-3 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full w-fit">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-gold"></span>
               </span>
-              <span className="text-[10px] font-mono tracking-widest text-gray-400">
-                {currentTime.toLocaleTimeString()} — ADMIN CONNECTED
+              <span className="text-[10px] font-mono uppercase tracking-widest text-gray-400">
+                {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} — System Active
               </span>
             </div>
           </motion.div>
 
-          <div className="flex gap-4 w-full md:w-auto">
-            <button onClick={() => setShowCreateModal(true)} className="flex-1 md:flex-none bg-white text-black px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-gold transition-all active:scale-95 flex items-center justify-center gap-2">
-              <Plus size={16} strokeWidth={3} /> New Content
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-4">
+            <button onClick={() => setShowCreateModal(true)} className="group relative overflow-hidden bg-white text-black px-8 py-4 rounded-2xl font-bold transition-all hover:pr-12">
+              <span className="relative z-10 flex items-center gap-2 uppercase text-xs tracking-widest">
+                <Plus size={16} strokeWidth={3} /> New Masterpiece
+              </span>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all">
+                <ArrowUpRight size={18} />
+              </div>
             </button>
-            <button onClick={() => signOut()} className="p-4 bg-white/5 border border-white/10 rounded-2xl text-gray-500 hover:text-red-500 transition-all"><LogOut size={20}/></button>
-          </div>
+            <button onClick={() => signOut()} className="p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-red-500/10 hover:border-red-500/20 text-gray-400 hover:text-red-500 transition-all">
+              <LogOut size={20} />
+            </button>
+          </motion.div>
         </header>
 
-        {/* --- BENTO GRID STATS --- */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <Link to="/admin/bookings" className="md:col-span-2 group glass-strong p-10 rounded-[3rem] border border-white/5 bg-white/[0.01] hover:border-gold/30 transition-all">
-            <Calendar className="text-gold mb-6" size={32} />
-            <h3 className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Schedule</h3>
-            <div className="text-7xl font-bold tracking-tighter">{stats.bookings}</div>
-            <p className="mt-4 text-xs font-bold text-gray-400 group-hover:text-gold transition-colors flex items-center gap-2">Manage Bookings <ChevronRight size={14}/></p>
+        {/* BENTO GRID STATS */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
+          <Link to="/admin/bookings" className="md:col-span-2 group glass-strong p-8 rounded-[2.5rem] border border-white/5 hover:border-gold/30 transition-all relative overflow-hidden">
+            <div className="relative z-10">
+              <div className="bg-white/5 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 text-gold group-hover:scale-110 transition-transform duration-500">
+                <Calendar size={28} />
+              </div>
+              <h3 className="text-gray-500 text-xs font-bold uppercase tracking-[0.2em] mb-1">Upcoming Schedule</h3>
+              <div className="text-6xl font-bold tracking-tighter">{stats.bookings}</div>
+              <p className="text-gray-600 text-sm mt-4 font-medium group-hover:text-gray-400 transition-colors">Manage all photography sessions & clients →</p>
+            </div>
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Calendar size={120} />
+            </div>
           </Link>
-          <div className="glass-strong p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.01] hover:border-blue-400/30 transition-all">
-            <ImageIcon className="text-blue-400 mb-6" size={28} />
-            <h3 className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Albums</h3>
-            <div className="text-5xl font-bold tracking-tighter">{stats.albums}</div>
-          </div>
-          <div className="glass-strong p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.01] hover:border-purple-400/30 transition-all">
-            <Video className="text-purple-400 mb-6" size={28} />
-            <h3 className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Cinematics</h3>
-            <div className="text-5xl font-bold tracking-tighter">{stats.videos}</div>
-          </div>
+
+          <Link to="/admin/albums" className="group glass-strong p-8 rounded-[2.5rem] border border-white/5 hover:border-white/20 transition-all">
+            <div className="bg-white/5 w-12 h-12 rounded-xl flex items-center justify-center mb-6 text-blue-400">
+              <ImageIcon size={22} />
+            </div>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Albums</h3>
+            <div className="text-4xl font-bold tracking-tighter">{stats.albums}</div>
+          </Link>
+
+          <Link to="/admin/videos" className="group glass-strong p-8 rounded-[2.5rem] border border-white/5 hover:border-white/20 transition-all">
+            <div className="bg-white/5 w-12 h-12 rounded-xl flex items-center justify-center mb-6 text-purple-400">
+              <Video size={22} />
+            </div>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Cinematics</h3>
+            <div className="text-4xl font-bold tracking-tighter">{stats.videos}</div>
+          </Link>
         </div>
 
-        {/* --- CONTENT MANAGER (Albums & Videos) --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* RECENT WORK SECTION */}
+        <section className="glass-strong p-10 rounded-[3rem] border border-white/5">
+          <div className="flex justify-between items-center mb-10">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-gold/10 rounded-full flex items-center justify-center">
+                <Layers className="text-gold" size={20} />
+              </div>
+              <h3 className="text-2xl font-bold tracking-tight">Recent Archives</h3>
+            </div>
+            <Link to="/admin/albums" className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-gold transition-colors">View All Projects</Link>
+          </div>
           
-          {/* Album List */}
-          <section className="lg:col-span-2 glass-strong p-8 md:p-12 rounded-[3.5rem] border border-white/5 bg-white/[0.01]">
-            <div className="flex items-center gap-4 mb-10">
-              <Layers className="text-gold" size={24} />
-              <h2 className="text-2xl font-bold">Album Archives</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {albumsList.map((album) => (
-                <button key={album.id} onClick={() => openAlbum(album)} className="flex items-center justify-between p-6 bg-black/40 border border-white/5 rounded-2xl group hover:border-gold/50 transition-all text-left">
-                  <div className="flex items-center gap-4 truncate">
-                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-gold group-hover:scale-110 transition-transform"><LayoutGrid size={18}/></div>
-                    <span className="font-bold text-sm truncate">{album.name}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {albumsList.slice(0, 8).map((album, idx) => (
+              <motion.button 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                key={album.id} 
+                onClick={() => openAlbum(album)} 
+                className="flex items-center justify-between p-6 bg-white/[0.03] border border-white/5 rounded-2xl group hover:bg-white/[0.08] hover:border-gold/20 transition-all text-left"
+              >
+                <div className="flex items-center gap-4 overflow-hidden">
+                  <div className="shrink-0 w-10 h-10 bg-black rounded-lg border border-white/10 flex items-center justify-center text-gold group-hover:scale-110 transition-transform">
+                    <ImageIcon size={18} />
                   </div>
-                  <ChevronRight size={16} className="text-gray-600 group-hover:text-gold" />
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* Video Manager Sidebar */}
-          <section className="glass-strong p-8 rounded-[3rem] border border-white/5 bg-white/[0.01]">
-            <div className="flex items-center gap-4 mb-8">
-              <Video className="text-purple-400" size={22} />
-              <h2 className="text-xl font-bold">Recent Videos</h2>
-            </div>
-            <div className="space-y-4">
-              {videosList.slice(0, 4).map((vid) => (
-                <div key={vid.id} className="group relative aspect-video rounded-2xl overflow-hidden border border-white/5">
-                  <img src={vid.thumbnail_url} className="w-full h-full object-cover" alt="" />
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-3">
-                    <button onClick={() => deleteVideo(vid.id, vid.video_url, vid.thumbnail_url)} className="p-3 bg-red-500 rounded-xl hover:scale-110 transition-transform"><Trash2 size={16}/></button>
-                  </div>
-                  <div className="absolute bottom-3 left-3 right-3 truncate text-[10px] font-black uppercase tracking-widest text-white">{vid.title}</div>
+                  <span className="font-semibold truncate">{album.name}</span>
                 </div>
-              ))}
-            </div>
-          </section>
+                <ChevronRight size={16} className="text-gray-600 group-hover:text-gold transition-colors" />
+              </motion.button>
+            ))}
+          </div>
+        </section>
 
-        </div>
-
-        {/* --- MODAL: ALBUM VIEW --- */}
+        {/* MODALS - Cleaned up with better spacing and contrast */}
         <AnimatePresence>
           {selectedAlbum && (
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-10 backdrop-blur-3xl bg-black/80">
-              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-                className="relative glass-strong w-full max-w-7xl h-[90vh] flex flex-col p-6 md:p-12 rounded-[3.5rem] border border-white/10 bg-[#080808]">
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-2xl bg-black/80">
+              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative glass-strong w-full max-w-6xl h-[85vh] flex flex-col p-10 rounded-[3.5rem] border border-white/10 shadow-2xl">
                 <div className="flex justify-between items-center mb-10">
                   <div>
-                    <h2 className="text-4xl font-playfair font-bold italic">{selectedAlbum.name}</h2>
-                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mt-2">{albumPhotos.length} Masterpieces Found</p>
+                    <h2 className="text-3xl font-bold tracking-tighter text-white uppercase italic">{selectedAlbum.name}</h2>
+                    <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-bold mt-1">Found {albumPhotos.length} Masterpieces in this collection</p>
                   </div>
-                  <button onClick={() => setSelectedAlbum(null)} className="p-4 bg-white/5 rounded-full hover:bg-red-500 transition-all"><X size={24}/></button>
+                  <button onClick={() => setSelectedAlbum(null)} className="p-4 bg-white/5 hover:bg-white/10 rounded-full transition-all group">
+                    <X className="group-hover:rotate-90 transition-transform" />
+                  </button>
                 </div>
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                  {fetchingPhotos ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gold"/></div> : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                
+                <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
+                  {fetchingPhotos ? <div className="flex flex-col items-center justify-center py-40 gap-4"><Loader2 className="animate-spin text-gold" /><p className="text-[10px] font-bold uppercase tracking-widest text-gray-600">Retrieving Files...</p></div> : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                       {albumPhotos.map(photo => (
-                        <div key={photo.id} className="group relative aspect-square rounded-2xl overflow-hidden border border-white/5 bg-white/[0.02]">
-                          <img src={photo.image_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" />
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button onClick={() => deletePhoto(photo.id, photo.image_url)} className="p-4 bg-red-500 rounded-2xl hover:scale-110 transition-transform"><Trash2 size={20}/></button>
+                        <div key={photo.id} className="group relative bg-white/[0.02] rounded-[1.5rem] overflow-hidden border border-white/5 aspect-square">
+                          <img src={photo.image_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => deletePhoto(photo.id, photo.image_url)} className="p-2 bg-red-500 text-white rounded-lg hover:scale-110 transition-transform"><Trash2 size={16}/></button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -302,48 +281,66 @@ export const AdminDashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* --- MODAL: UPLOAD --- */}
+        {/* CREATE POST MODAL - Refined */}
         <AnimatePresence>
           {showCreateModal && (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl">
-              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
-                className="relative glass-strong w-full max-w-lg p-10 md:p-14 rounded-[3.5rem] border border-white/10 bg-[#080808]">
-                <button onClick={resetForm} className="absolute top-10 right-10 text-gray-500 hover:text-white"><X size={24}/></button>
-                <div className="text-center mb-10">
-                  <h2 className="text-3xl font-playfair font-bold">Studio Uploader</h2>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gold/50 mt-1">Add to Portfolio</p>
-                </div>
-                <form onSubmit={handleCreatePost} className="space-y-6">
-                  <div className="flex p-1.5 bg-white/5 rounded-2xl">
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+              <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="relative glass-strong w-full max-w-xl p-12 rounded-[3.5rem] border border-white/10 shadow-2xl">
+                <button onClick={resetForm} className="absolute top-8 right-8 text-gray-500 hover:text-white"><X /></button>
+                <h2 className="text-3xl font-playfair font-bold mb-10 text-center">New Content</h2>
+                
+                <form onSubmit={handleCreatePost} className="space-y-8">
+                  <div className="flex p-1.5 bg-black/40 border border-white/5 rounded-2xl">
                     {['image', 'video'].map((type) => (
-                      <button key={type} type="button" onClick={() => setPostType(type as any)} 
-                        className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${postType === type ? 'bg-gold text-black' : 'text-gray-500'}`}>{type}</button>
+                      <button key={type} type="button" onClick={() => setPostType(type as any)} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${postType === type ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>{type}</button>
                     ))}
                   </div>
-                  {postType === 'image' ? (
-                    <select required className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-sm outline-none focus:border-gold"
-                      value={selectedAlbumId} onChange={(e) => setSelectedAlbumId(e.target.value)}>
-                      <option value="" className="bg-black">Target Album</option>
-                      {albumsList.map(a => <option key={a.id} value={a.id} className="bg-black">{a.name}</option>)}
-                    </select>
-                  ) : (
-                    <input required type="text" placeholder="Video Title" className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-sm outline-none focus:border-gold"
-                      value={title} onChange={(e) => setTitle(e.target.value)} />
-                  )}
-                  <div className="border-2 border-dashed border-white/10 rounded-2xl p-8 text-center relative hover:border-gold/40 transition-all bg-white/[0.01]">
-                    <input required type="file" accept={postType === 'image' ? "image/*" : "video/*"} className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                    <Upload className="mx-auto text-gold/40 mb-3" size={32} />
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">{selectedFile ? selectedFile.name : `Choose ${postType} File`}</p>
-                  </div>
-                  {postType === 'video' && (
-                    <div className="border-2 border-dashed border-white/10 rounded-2xl p-6 text-center relative bg-white/[0.01]">
-                      <input required type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">{thumbnailFile ? thumbnailFile.name : 'Choose Video Thumbnail'}</p>
+
+                  <div className="space-y-4">
+                    {postType === 'image' ? (
+                      <div className="group">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase ml-4 mb-2 block tracking-widest group-focus-within:text-gold transition-colors">Target Album</label>
+                        <select required className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:border-gold transition-all appearance-none cursor-pointer"
+                          value={selectedAlbumId} onChange={(e) => setSelectedAlbumId(e.target.value)}>
+                          <option value="" className="bg-[#050505]">Select Destination</option>
+                          {albumsList.map(a => <option key={a.id} value={a.id} className="bg-[#050505]">{a.name}</option>)}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="group">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase ml-4 mb-2 block tracking-widest group-focus-within:text-gold transition-colors">Production Title</label>
+                        <input required type="text" placeholder="Cinematic Title..." className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:border-gold transition-all"
+                          value={title} onChange={(e) => setTitle(e.target.value)} />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="border-2 border-dashed border-white/10 rounded-3xl p-10 text-center relative hover:border-gold/50 transition-all bg-white/[0.02] group/upload">
+                        <input required type="file" accept={postType === 'image' ? "image/*" : "video/*"} className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                        <Upload className="mx-auto text-gold mb-4 group-hover/upload:scale-110 transition-transform" size={32} />
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          {selectedFile ? selectedFile.name : `Drop ${postType} file`}
+                        </p>
+                      </div>
+                      
+                      {postType === 'video' && (
+                        <div className="border-2 border-dashed border-white/10 rounded-3xl p-8 text-center relative hover:border-purple-500/50 transition-all bg-white/[0.02]">
+                          <input required type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
+                          <div className="flex items-center justify-center gap-3">
+                            <ImageIcon className="text-purple-400" size={20} />
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                              {thumbnailFile ? thumbnailFile.name : 'Choose Cover Image'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <button disabled={submitting} type="submit" 
-                    className="w-full bg-gold text-black py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl shadow-gold/20 active:scale-95 transition-all">
-                    {submitting ? <Loader2 className="animate-spin mx-auto" /> : 'Publish to Portfolio'}
+                  </div>
+
+                  <button disabled={submitting} type="submit" className="w-full bg-gold text-black py-5 rounded-2xl font-bold flex justify-center items-center gap-3 shadow-2xl shadow-gold/20 active:scale-95 transition-all disabled:opacity-50 group">
+                    {submitting ? <Loader2 className="animate-spin" /> : (
+                      <span className="flex items-center gap-2 uppercase text-xs tracking-widest">Publish to Portfolio <ArrowUpRight size={16}/></span>
+                    )}
                   </button>
                 </form>
               </motion.div>
