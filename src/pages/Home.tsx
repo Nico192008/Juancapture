@@ -84,34 +84,30 @@ export const Home = () => {
                <div className="h-[1px] w-8 md:w-12 bg-gold/50" />
             </div>
 
-            {/* Responsive Font Sizes: text-5xl sa mobile, text-9xl sa desktop */}
             <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-playfair font-bold tracking-tighter mb-4 md:mb-6 leading-tight">
               Juan <span className="italic font-medium text-gold">Captures</span>
             </h1>
             
             <motion.p
-              className="text-lg sm:text-xl md:text-3xl font-vibes text-white mb-8 md:mb-12 tracking-widest opacity-90 px-2"
+              className="text-lg sm:text-xl md:text-3xl font-vibes text-white mb-8 md:mb-12 tracking-widest opacity-95 px-2 drop-shadow-lg"
             >
               "Capturing Moments, Creating Memories"
             </motion.p>
 
-            {/* Buttons stack on mobile, row on tablet up */}
-            <motion.div
-              className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center items-center"
-            >
-              <Link to="/gallery" className="w-full sm:w-auto group bg-white text-black px-8 md:px-10 py-4 md:py-5 rounded-full font-bold text-[10px] md:text-xs uppercase tracking-widest hover:bg-gold transition-all duration-500 flex items-center justify-center gap-3 shadow-xl">
+            <motion.div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center items-center">
+              <Link to="/gallery" className="w-full sm:w-auto group bg-white text-black px-8 md:px-10 py-4 md:py-5 rounded-full font-bold text-[10px] md:text-xs uppercase tracking-widest hover:bg-gold transition-all duration-500 flex items-center justify-center gap-3 shadow-2xl">
                 Explore Archives <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link to="/booking" className="w-full sm:w-auto px-8 md:px-10 py-4 md:py-5 rounded-full font-bold text-[10px] md:text-xs uppercase tracking-widest border border-white/20 hover:border-gold hover:text-gold transition-all duration-500 bg-white/5 backdrop-blur-md flex justify-center">
+              
+              {/* --- GLOWING BOOKING BUTTON --- */}
+              <Link to="/booking" className="w-full sm:w-auto relative px-8 md:px-10 py-4 md:py-5 rounded-full font-bold text-[10px] md:text-xs uppercase tracking-widest border border-gold/40 text-gold hover:text-black hover:bg-gold transition-all duration-500 bg-black/40 backdrop-blur-md flex justify-center shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_40px_rgba(212,175,55,0.6)]">
                 Reserve Session
               </Link>
             </motion.div>
           </motion.div>
         </div>
 
-        <motion.div
-          className="absolute bottom-8 md:bottom-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 md:gap-4 z-10"
-        >
+        <motion.div className="absolute bottom-8 md:bottom-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 md:gap-4 z-10">
           <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.4em] text-gray-500">Scroll Down</span>
           <div className="w-[1px] h-8 md:h-12 bg-gradient-to-b from-gold to-transparent" />
         </motion.div>
@@ -216,12 +212,15 @@ export const Home = () => {
         </section>
       )}
 
-      {/* --- CALL TO ACTION --- */}
+      {/* --- CALL TO ACTION (Main Glowing Button) --- */}
       <section className="py-20 md:py-40">
         <div className="container mx-auto px-6">
           <motion.div
             className="relative glass-strong p-10 md:p-32 rounded-[2.5rem] md:rounded-[4rem] text-center border border-white/10 overflow-hidden bg-white/[0.02]"
           >
+            {/* Background Glow Overlay */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-gold/10 rounded-full blur-[100px] pointer-events-none" />
+            
             <div className="relative z-10">
               <h2 className="text-3xl md:text-7xl font-playfair font-bold text-white mb-6 md:mb-8 tracking-tighter leading-tight">
                 Ready to <span className="italic text-gold">Begin?</span>
@@ -229,8 +228,18 @@ export const Home = () => {
               <p className="text-gray-400 text-sm md:text-lg mb-8 md:mb-12 max-w-xl mx-auto font-medium leading-relaxed px-4">
                 Let's transform your vision into a cinematic reality. Reserve your preferred date today.
               </p>
-              <Link to="/booking" className="w-full sm:w-auto bg-white text-black px-10 md:px-12 py-4 md:py-6 rounded-full font-black text-[10px] md:text-xs uppercase tracking-[0.3em] hover:bg-gold transition-all duration-500 inline-block">
-                Book Your Session
+              
+              {/* --- THE ORIGINAL GLOW BUTTON --- */}
+              <Link 
+                to="/booking" 
+                className="relative inline-block group"
+              >
+                {/* Pulsing Aura Layer */}
+                <div className="absolute inset-0 bg-gold blur-[20px] opacity-20 group-hover:opacity-60 transition-opacity duration-500 rounded-full" />
+                
+                <div className="relative bg-white text-black px-10 md:px-12 py-4 md:py-6 rounded-full font-black text-[10px] md:text-xs uppercase tracking-[0.3em] hover:bg-gold hover:text-black transition-all duration-500 shadow-[0_0_30px_rgba(255,255,255,0.2)] group-hover:shadow-[0_0_50px_rgba(212,175,55,0.8)]">
+                  Book Your Session
+                </div>
               </Link>
             </div>
           </motion.div>
