@@ -5,8 +5,20 @@ import { AuthProvider } from './contexts/AuthContext';
 import { LoadingScreen } from './components/LoadingScreen';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { FacebookMessenger } from './components/FacebookMessenger';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { Home } from './pages/Home';
-// ... import other pages (Gallery, Videos, etc.)
+import { Gallery } from './pages/Gallery';
+import { Videos } from './pages/Videos';
+import { About } from './pages/About';
+import { Contact } from './pages/Contact';
+import { Booking } from './pages/Booking';
+import { AdminLogin } from './pages/admin/AdminLogin';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { ManageAlbums } from './pages/admin/ManageAlbums';
+import { ManageVideos } from './pages/admin/ManageVideos';
+import { ManageBookings } from './pages/admin/ManageBookings';
+import { ManageTestimonials } from './pages/admin/ManageTestimonials';
 
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -16,6 +28,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       {!isAdminRoute && <Navbar />}
       {children}
       {!isAdminRoute && <Footer />}
+      {!isAdminRoute && <FacebookMessenger />}
     </>
   );
 }
@@ -24,9 +37,10 @@ function AppContent() {
   const [appIsLoading, setAppIsLoading] = useState(true);
 
   useEffect(() => {
+    // SAKTONG 8 SECONDS MASTER TIMER
     const timer = setTimeout(() => {
       setAppIsLoading(false);
-    }, 8000); // 8 Seconds
+    }, 8000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -35,13 +49,13 @@ function AppContent() {
       <AnimatePresence mode="wait">
         {appIsLoading ? (
           <motion.div
-            key="loading-zoom-out"
+            key="loading-screen-wrapper"
             initial={{ opacity: 1, scale: 1 }}
             exit={{ 
               opacity: 0, 
-              scale: 0.8, // GINAWANG ZOOM OUT (Paliit)
+              scale: 0.85, // CINEMATIC ZOOM OUT (Paliit)
               filter: "blur(20px)",
-              transition: { duration: 1.5, ease: [0.43, 0.13, 0.23, 0.96] } 
+              transition: { duration: 1.5, ease: [0.65, 0, 0.35, 1] } 
             }}
             className="fixed inset-0 z-[100]"
           >
@@ -49,15 +63,25 @@ function AppContent() {
           </motion.div>
         ) : (
           <motion.div
-            key="home-zoom-in"
-            initial={{ opacity: 0, scale: 1.2, filter: "blur(10px)" }} // GINAWANG ZOOM IN (Mula malaki papuntang normal)
+            key="home-content-wrapper"
+            initial={{ opacity: 0, scale: 1.15, filter: "blur(10px)" }} // CINEMATIC ZOOM IN (Mula malaki papuntang normal)
             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
             transition={{ duration: 1.8, ease: "easeOut" }}
           >
             <Layout>
               <Routes>
                 <Route path="/" element={<Home />} />
-                {/* I-paste dito ang lahat ng dating Routes mo */}
+                <Route path="/gallery" element={<Gallery />} />
+                <Route path="/videos" element={<Videos />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/booking" element={<Booking />} />
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin/albums" element={<ProtectedRoute><ManageAlbums /></ProtectedRoute>} />
+                <Route path="/admin/videos" element={<ProtectedRoute><ManageVideos /></ProtectedRoute>} />
+                <Route path="/admin/bookings" element={<ProtectedRoute><ManageBookings /></ProtectedRoute>} />
+                <Route path="/admin/testimonials" element={<ProtectedRoute><ManageTestimonials /></ProtectedRoute>} />
               </Routes>
             </Layout>
           </motion.div>
