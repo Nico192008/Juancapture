@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Video, Award, Users, ArrowRight, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Album, Testimonial } from '../types';
@@ -8,8 +8,28 @@ import { Album, Testimonial } from '../types';
 export const Home = () => {
   const [featuredAlbums, setFeaturedAlbums] = useState<Album[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  
+  // --- BACKGROUND SLIDER LOGIC ---
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
+  const heroPhotos = [
+    '/images/loading/load-1.jpg',
+    '/images/loading/load-2.jpg',
+    '/images/loading/load-3.jpg',
+    '/images/loading/load-4.jpg',
+    '/images/loading/load-5.jpg',
+    '/images/loading/load-6.jpg',
+    '/images/loading/load-7.jpg',
+    '/images/loading/load-8.jpg',
+    '/images/loading/load-9.jpg',
+    '/images/loading/load-10.jpg',
+  ];
 
   useEffect(() => {
+    // Magpapalit ng photo kada 5 seconds
+    const bgTimer = setInterval(() => {
+      setCurrentBgIndex((prev) => (prev + 1) % heroPhotos.length);
+    }, 5000);
+
     const fetchData = async () => {
       const { data: albums } = await supabase
         .from('albums')
@@ -28,22 +48,35 @@ export const Home = () => {
     };
 
     fetchData();
-  }, []);
+    return () => clearInterval(bgTimer);
+  }, [heroPhotos.length]);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      {/* --- HERO SECTION --- */}
+      {/* --- HERO SECTION WITH AUTO-SLIDER --- */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
-          style={{
-            backgroundImage: 'url(https://raw.githubusercontent.com/Nico192008/Juancapture-photos/refs/heads/main/file_000000008d9071faa08591b1e5f7ab58.png?auto=compress&cs=tinysrgb&w=1920)',
-            filter: 'brightness(0.3)',
-          }}
-        />
         
-        {/* Subtle Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-radial-gradient from-gold/5 to-transparent pointer-events-none" />
+        {/* Background Slider Container */}
+        <div className="absolute inset-0 z-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentBgIndex}
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: "easeInOut" }}
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{
+                backgroundImage: `url(${heroPhotos[currentBgIndex]})`,
+                filter: 'brightness(0.25)', // Mas madilim para litaw ang text
+              }}
+            />
+          </AnimatePresence>
+        </div>
+        
+        {/* Subtle Ambient Glow & Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#050505] z-[1]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-radial-gradient from-gold/5 to-transparent pointer-events-none z-[1]" />
 
         <div className="relative z-10 text-center px-6">
           <motion.div
@@ -53,11 +86,11 @@ export const Home = () => {
           >
             <div className="flex items-center justify-center gap-4 mb-8">
                <div className="h-[1px] w-12 bg-gold/50" />
-               <span className="text-[10px] font-black uppercase tracking-[0.6em] text-gold/80">Premium Studio</span>
+               <span className="text-[10px] font-black uppercase tracking-[0.6em] text-gold/80 shadow-sm">Premium Studio</span>
                <div className="h-[1px] w-12 bg-gold/50" />
             </div>
 
-            <h1 className="text-7xl md:text-8xl lg:text-9xl font-playfair font-bold tracking-tighter mb-6">
+            <h1 className="text-7xl md:text-8xl lg:text-9xl font-playfair font-bold tracking-tighter mb-6 leading-none">
               Juan <span className="italic font-medium text-gold">Captures</span>
             </h1>
             
@@ -65,7 +98,7 @@ export const Home = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 1 }}
-              className="text-2xl md:text-3xl font-playfair italic text-gray-400 mb-12 tracking-wide"
+              className="text-xl md:text-3xl font-vibes text-white mb-12 tracking-widest opacity-90"
             >
               "Capturing Moments, Creating Memories"
             </motion.p>
@@ -76,21 +109,22 @@ export const Home = () => {
               transition={{ delay: 1, duration: 0.8 }}
               className="flex flex-col sm:flex-row gap-6 justify-center items-center"
             >
-              <Link to="/gallery" className="group bg-white text-black px-10 py-5 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-gold transition-all duration-500 flex items-center gap-3">
+              <Link to="/gallery" className="group bg-white text-black px-10 py-5 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-gold transition-all duration-500 flex items-center gap-3 shadow-xl">
                 Explore Archives <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link to="/booking" className="px-10 py-5 rounded-full font-bold text-xs uppercase tracking-widest border border-white/20 hover:border-gold hover:text-gold transition-all duration-500 bg-white/5 backdrop-blur-sm">
+              <Link to="/booking" className="px-10 py-5 rounded-full font-bold text-xs uppercase tracking-widest border border-white/20 hover:border-gold hover:text-gold transition-all duration-500 bg-white/5 backdrop-blur-md">
                 Reserve Session
               </Link>
             </motion.div>
           </motion.div>
         </div>
 
+        {/* Scroll Indicator */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5, duration: 1 }}
-          className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-4"
+          className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-4 z-10"
         >
           <span className="text-[9px] font-black uppercase tracking-[0.4em] text-gray-500">Scroll Down</span>
           <div className="w-[1px] h-12 bg-gradient-to-b from-gold to-transparent" />
@@ -99,7 +133,7 @@ export const Home = () => {
 
       {/* --- SERVICES SECTION (Bento Style) --- */}
       <section className="py-32 bg-[#080808] relative">
-        <div className="container-custom">
+        <div className="container-custom mx-auto px-6">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -123,7 +157,7 @@ export const Home = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="glass-strong p-10 rounded-[2.5rem] border border-white/5 hover:border-gold/30 transition-all duration-500 group"
+                className="glass-strong p-10 rounded-[2.5rem] border border-white/5 hover:border-gold/30 transition-all duration-500 group bg-white/[0.02]"
               >
                 <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center mb-8 text-gold group-hover:scale-110 transition-transform duration-500">
                    <service.icon size={28} />
@@ -138,7 +172,7 @@ export const Home = () => {
 
       {/* --- FEATURED WORK SECTION --- */}
       <section className="py-32">
-        <div className="container-custom">
+        <div className="container-custom mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
             <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               <h2 className="text-5xl font-playfair font-bold mb-4 tracking-tighter">Featured <span className="italic text-gold">Masterpieces</span></h2>
@@ -180,7 +214,7 @@ export const Home = () => {
       {/* --- TESTIMONIALS --- */}
       {testimonials.length > 0 && (
         <section className="py-32 bg-[#080808]">
-          <div className="container-custom">
+          <div className="container-custom mx-auto px-6">
             <div className="text-center mb-20">
                <h2 className="text-4xl font-playfair font-bold tracking-tight">Studio Voices</h2>
                <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Client Experiences</p>
@@ -193,7 +227,7 @@ export const Home = () => {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  className="glass-strong p-10 rounded-[3rem] border border-white/5 relative"
+                  className="glass-strong p-10 rounded-[3rem] border border-white/5 relative bg-white/[0.01]"
                 >
                   <div className="flex gap-1 mb-8 text-gold">
                     {[...Array(5)].map((_, i) => <Star key={i} size={14} fill={i < testimonial.rating ? "currentColor" : "none"} />)}
@@ -202,7 +236,7 @@ export const Home = () => {
                     "{testimonial.message}"
                   </p>
                   <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center text-gold font-bold text-xs">
+                     <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center text-gold font-bold text-xs border border-gold/20">
                         {testimonial.client_name.charAt(0)}
                      </div>
                      <div>
@@ -219,24 +253,23 @@ export const Home = () => {
 
       {/* --- CALL TO ACTION --- */}
       <section className="py-40">
-        <div className="container-custom">
+        <div className="container-custom mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="relative glass-strong p-20 md:p-32 rounded-[4rem] text-center border border-white/10 overflow-hidden"
+            className="relative glass-strong p-20 md:p-32 rounded-[4rem] text-center border border-white/10 overflow-hidden bg-white/[0.02]"
           >
-            {/* Background Accent */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gold/5 rounded-full blur-[120px] pointer-events-none" />
             
             <div className="relative z-10">
-              <h2 className="text-5xl md:text-7xl font-playfair font-bold text-white mb-8 tracking-tighter">
+              <h2 className="text-5xl md:text-7xl font-playfair font-bold text-white mb-8 tracking-tighter leading-none">
                 Ready to <span className="italic text-gold">Begin?</span>
               </h2>
               <p className="text-gray-400 mb-12 max-w-xl mx-auto font-medium leading-relaxed">
                 Let's transform your vision into a cinematic reality. Reserve your preferred date today.
               </p>
-              <Link to="/booking" className="bg-white text-black px-12 py-6 rounded-full font-black text-xs uppercase tracking-[0.3em] hover:bg-gold transition-all duration-500 inline-block shadow-2xl shadow-white/5">
+              <Link to="/booking" className="bg-white text-black px-12 py-6 rounded-full font-black text-xs uppercase tracking-[0.3em] hover:bg-gold transition-all duration-500 inline-block shadow-2xl">
                 Book Your Session
               </Link>
             </div>
