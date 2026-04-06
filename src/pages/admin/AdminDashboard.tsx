@@ -12,12 +12,12 @@ import {
   Loader2,
   Layers,
   ChevronRight,
-  ArrowUpRight
+  ArrowUpRight,
+  Trash2 // Naidagdag para sa delete icon
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 
-// Define explicit types para sa Album at Photo
 interface Album {
   id: string;
   name: string;
@@ -86,6 +86,29 @@ export const AdminDashboard = () => {
     const { data } = await supabase.from('images').select('*').eq('album_id', album.id);
     setAlbumPhotos(data || []);
     setFetchingPhotos(false);
+  };
+
+  // --- DELETE PHOTO FUNCTION ---
+  const handleDeletePhoto = async (photoId: string, imageUrl: string) => {
+    if (!confirm("Sigurado ka bang buburahin ang litratong ito?")) return;
+
+    try {
+      // 1. Extract file path mula sa URL para mabura sa Storage
+      const pathParts = imageUrl.split('/portfolio/');
+      if (pathParts.length > 1) {
+        const filePath = pathParts[1];
+        await supabase.storage.from('portfolio').remove([filePath]);
+      }
+
+      // 2. Burahin sa Database
+      const { error } = await supabase.from('images').delete().eq('id', photoId);
+      if (error) throw error;
+
+      // 3. Update UI agad
+      setAlbumPhotos(prev => prev.filter(p => p.id !== photoId));
+    } catch (err) {
+      alert("Error deleting photo: " + (err as Error).message);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -194,9 +217,6 @@ export const AdminDashboard = () => {
             <div>
               <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Bookings</h3>
               <div className="text-6xl font-bold tracking-tighter">{stats.bookings}</div>
-              <div className="mt-2 flex items-center text-[10px] text-amber-500 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                Manage Schedule <ArrowUpRight size={12} className="ml-1"/>
-              </div>
             </div>
           </Link>
 
@@ -241,7 +261,7 @@ export const AdminDashboard = () => {
           </div>
         </section>
 
-        {/* CREATE MODAL */}
+        {/* --- MODAL: CREATE NEW POST --- */}
         <AnimatePresence>
           {showCreateModal && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
@@ -252,6 +272,7 @@ export const AdminDashboard = () => {
                 </div>
                 
                 <form onSubmit={handleCreatePost} className="space-y-6">
+                  {/* ... (Type Picker & Form Fields - same as before) */}
                   <div className="flex p-1 bg-white/5 rounded-xl">
                     {(['image', 'video'] as const).map((type) => (
                       <button 
@@ -296,6 +317,7 @@ export const AdminDashboard = () => {
                     </p>
                   </div>
 
+                  {/* PREVIEW */}
                   {selectedFiles.length > 0 && (
                     <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-2 bg-black/40 rounded-xl border border-white/5">
                       {selectedFiles.map((file, idx) => (
@@ -307,15 +329,6 @@ export const AdminDashboard = () => {
                           )}
                         </div>
                       ))}
-                    </div>
-                  )}
-                  
-                  {postType === 'video' && (
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between">
-                       <span className="text-[10px] font-bold text-gray-500 uppercase truncate max-w-[150px]">
-                         {thumbnailFile ? thumbnailFile.name : "Cover Image"}
-                       </span>
-                       <input type="file" accept="image/*" className="w-24 text-[10px]" onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)} />
                     </div>
                   )}
 
@@ -332,7 +345,7 @@ export const AdminDashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* ALBUM PREVIEW MODAL */}
+        {/* --- MODAL: ALBUM PREVIEW WITH DELETE --- */}
         <AnimatePresence>
           {selectedAlbum && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
@@ -341,14 +354,27 @@ export const AdminDashboard = () => {
                   <h2 className="text-2xl font-bold">{selectedAlbum.name}</h2>
                   <button onClick={() => setSelectedAlbum(null)} className="text-gray-500 hover:text-white"><X /></button>
                 </div>
+
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
                   {fetchingPhotos ? (
                     <div className="flex justify-center p-10"><Loader2 className="animate-spin text-amber-500" /></div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {albumPhotos.length === 0 && <p className="col-span-full text-center text-gray-500 py-10">No photos in this album.</p>}
                       {albumPhotos.map((photo) => (
                         <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden border border-white/5 group">
                           <img src={photo.image_url} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt="" />
+                          
+                          {/* DELETE OVERLAY */}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button 
+                              onClick={() => handleDeletePhoto(photo.id, photo.image_url)}
+                              className="p-3 bg-red-500 text-white rounded-full hover:bg-red-600 active:scale-90 transition-all"
+                              title="Delete Photo"
+                            >
+                              <Trash2 size={20} />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
